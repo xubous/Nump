@@ -1,0 +1,94 @@
+# Nump
+
+# Requisitos Funcionais
+[  ] Envio de arquivos individuais ou múltiplos para um destino configurável ( nuvem, drive ou banco de dados ).
+[  ] Exibição de progresso e histórico de uploads.
+[  ] To-Do list para criar, editar e excluir tarefas.
+[  ] Alerta de fim de dia caso existam tarefas pendentes.
+[  ] Cronômetro Pomodoro com controle de iniciar, pausar e redefinir.
+[  ] Configuração de tempos personalizados para ciclos de foco e pausa.
+[  ] Notificações ao término de cada ciclo.
+[  ] Sincronização de dados quando houver conexão com backend.
+[  ] Anotações gerais que ficam salvas por dia anotado
+[  ] Api noticias
+
+# Requisitos Não Funcionais
+[  ] Interface limpa, intuitiva e responsiva.
+[  ] Operações assíncronas e desempenho fluido.
+[  ] Criptografia de dados sensíveis.
+[  ] Compatibilidade com Windows e Linux.
+[  ] Estrutura modular para fácil expansão e manutenção.
+
+# Regras de Negócio
+[  ] As tarefas devem funcionar offline, com sincronização posterior.
+[  ] Cada tarefa deve possuir data e prioridade associadas.
+[  ] O Pomodoro só pode ser iniciado se houver uma tarefa ativa.
+[  ] Alertas de fim de dia disparam apenas uma vez por sessão.
+[  ] Uploads possuem limite configurável de tamanho.
+
+# Ideias Futuras
+[  ] Relatório diário com tempo total de foco e tarefas concluídas.
+[  ] Estatísticas e gráficos de produtividade.
+[  ] Integração com calendários externos ( Google Calendar, Outlook, etc. ).
+[  ] Bloco de notas rápido para anotações temporárias.
+[  ] Modo concentração para bloquear distrações.
+[  ] Gamificação com conquistas por metas cumpridas.
+[  ] Widget de desktop para acesso rápido a tarefas e Pomodoro.
+
+# Anotações
+[  ] Backend ainda indefinido ( possíveis opções: Firebase, Supabase ou servidor próprio ).
+[  ] Stack sugerida: Electron + Vite + React + Tailwind.
+[  ] Estrutura modular para facilitar substituição ou adição de novos módulos ( to-do, Pomodoro, upload, etc. ).
+
+ ___________________________________________
+|                 ANOTAÇÕES                 |
+|-------------------------------------------|
+| [ Data: 13/11/2025 ]                      |
+|-------------------------------------------|
+| Escreva aqui suas anotações do dia.       |
+|                                           |
+|                                           |
+|                                           |
+|                                           |
+|-------------------------------------------|
+| [Salvar]                                  |
+ -------------------------------------------
+
+ ___________________________________________
+|                 POMODORO                  |
+|-------------------------------------------|
+|               [ 25:00 ]                   |
+|                                           |
+|     [Iniciar]  [Pausar]  [Resetar]        |
+|-------------------------------------------|
+| Ciclo atual: Foco                         |
+| Próxima pausa: 5 minutos                  |
+|-------------------------------------------|
+| [Configurações de tempo]                  |
+ -------------------------------------------
+
+ ___________________________________________
+|                  TO-DO                    |
+|-------------------------------------------|
+| [ + ] Nova tarefa...                      |
+|-------------------------------------------|
+| [ ] Estudar React                         |
+| [ ] Finalizar upload de arquivos          |
+| [x] Ler documentação Tailwind             |
+|-------------------------------------------|
+| [Alertas automáticos ao fim do dia]       |
+ -------------------------------------------
+
+ ___________________________________________
+|                 ARQUIVOS                  |
+|-------------------------------------------|
+| Arraste ou selecione arquivos             |
+|-------------------------------------------|
+| [ Upload ]                                |
+|-------------------------------------------|
+| Últimos envios:                           |
+| - relatorio.pdf (100%) ✔️                 |
+| - imagem.png (em andamento...)            |
+|-------------------------------------------|
+| [Histórico completo]                      |
+ -------------------------------------------
