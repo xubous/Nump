@@ -92,9 +92,3 @@
 |-------------------------------------------|
 | [Histórico completo]                      |
  -------------------------------------------
-
-Compilação
-
-Para compilar o projeto em C++ usando Raylib, utilize:
-
-g++ -o exe_name main_file_name.cpp -lraylib

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../include/raylib.h"
+#include "../include/Raylib/raylib.h"
 
 #define font_size 12
 
@@ -80,11 +80,7 @@ class Window
                 if ( hover ( button ) )
                 {
                     SetMouseCursor ( MOUSE_CURSOR_POINTING_HAND );
-                    // new_window ( );
-                } else
-                    {
-                        SetMouseCursor ( MOUSE_CURSOR_DEFAULT );
-                    }
+                }
 
                 DrawRectangle ( button -> button_01_x, button -> button_01_y, button -> button_01_w, button -> button_01_h, BLACK );
                 DrawText ( "Botao", text_x, text_y, font_size, WHITE );

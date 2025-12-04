@@ -1,7 +1,4 @@
-#include <iostream>
-#include "../include/raylib.h"
-
-using std::cout, std::cin, std::endl;
+#include "../include/main_libary.h"
 
 int main ( )
 {
