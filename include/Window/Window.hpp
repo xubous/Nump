@@ -3,7 +3,8 @@
 
 #include <iostream>
 #include "../Raylib/raylib.h"
-#include "../Button/Button.hpp"
+#include "../Button/button.hpp"
+#include "../Functions/Notes/notes.hpp"
 
 #define font_size 12
 
@@ -33,8 +34,8 @@ class Window
         Window ( );
         bool hover ( Button * button );
         void create_window ( );
-        void draw_buttons ( );
         void draw_title_card ( );
+        void draw_buttons ( );
 };
 
 #endif
