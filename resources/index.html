@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>NUMP</title>
+<style>
+body {
+  background: #0f172a;
+  color: #e5e7eb;
+  font-family: sans-serif;
+  padding: 20px;
+}
+textarea, button, input {
+  margin-top: 6px;
+}
+#drop {
+  margin-top: 20px;
+  padding: 30px;
+  border: 2px dashed #38bdf8;
+  text-align: center;
+  transition: background 0.3s;
+}
+ul { list-style: none; padding: 0; }
+li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<h1>NUMP</h1>
+
+<!-- TO-DO -->
+<h3>To-do</h3>
+<input id="taskInput" placeholder="Nova tarefa">
+<button onclick="addTask()">Adicionar</button>
+<ul id="taskList"></ul>
+
+<!-- NOTAS -->
+<h3>Notas</h3>
+<textarea id="note" rows="4" cols="40"></textarea><br>
+<button onclick="addNote()">Adicionar nota</button>
+<ul id="noteList"></ul>
+
+<!-- POMODORO -->
+<h3>Pomodoro</h3>
+<input id="minutes" type="number" value="25" min="1"> min
+<button onclick="startPomodoro()">Iniciar</button>
+<p id="timer"></p>
+
+<!-- UPLOAD -->
+<h3>Transferência de arquivos (8080)</h3>
+<div id="drop">Arraste arquivos aqui</div>
+<input type="file" id="fileInput" multiple>
+<p id="status"></p>
+<ul id="fileList"></ul>
+
+<script src="js/neutralino.js"></script>
+<script>
+Neutralino.init();
+
+/* ===== TO-DO ===== */
+function addTask() {
+  const input = document.getElementById("taskInput");
+  const task = input.value.trim();
+  if (!task) return;
+
+  const li = document.createElement("li");
+  li.textContent = task;
+  li.onclick = () => li.remove();
+  document.getElementById("taskList").appendChild(li);
+
+  input.value = "";
+}
+
+/* ===== NOTAS ===== */
+let notes = [];
+
+async function addNote() {
+  const text = document.getElementById("note").value.trim();
+  if (!text) return;
+
+  notes.push(text);
+  renderNotes();
+
+  try {
+    const appData = await Neutralino.os.getPath("data");
+    const filePath = `${appData}/notes.json`;
+    await Neutralino.filesystem.writeFile(filePath, JSON.stringify(notes));
+    alert("Notas salvas em " + filePath);
+  } catch (err) {
+    console.error("Erro ao salvar notas:", err);
+    alert("Falha ao salvar notas: " + JSON.stringify(err));
+  }
+
+  document.getElementById("note").value = "";
+}
+
+function renderNotes() {
+  const list = document.getElementById("noteList");
+  list.innerHTML = "";
+  notes.forEach((n, i) => {
+    const li = document.createElement("li");
+    li.textContent = n;
+    li.onclick = () => {
+      notes.splice(i, 1);
+      renderNotes();
+    };
+    list.appendChild(li);
+  });
+}
+
+/* ===== POMODORO ===== */
+let seconds, interval;
+function startPomodoro() {
+  const mins = parseInt(document.getElementById("minutes").value) || 25;
+  seconds = mins * 60;
+  clearInterval(interval);
+
+  interval = setInterval(() => {
+    seconds--;
+    document.getElementById("timer").textContent =
+      Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+
+    if (seconds <= 0) {
+      clearInterval(interval);
+      alert("Pomodoro finalizado");
+    }
+  }, 1000);
+}
+
+/* ===== UPLOAD ===== */
+const drop = document.getElementById("drop");
+const status = document.getElementById("status");
+const fileList = document.getElementById("fileList");
+
+drop.addEventListener("dragover", e => {
+  e.preventDefault();
+  drop.style.background = "#1e293b"; // hover visual
+  status.textContent = "Arquivo detectado, solte para enviar...";
+});
+
+drop.addEventListener("dragleave", () => {
+  drop.style.background = "";
+  status.textContent = "";
+});
+
+drop.addEventListener("drop", async e => {
+  e.preventDefault();
+  drop.style.background = "";
+  console.log("Arquivos recebidos:", e.dataTransfer.files);
+
+  if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+    status.textContent = "Nenhum arquivo detectado. Use o seletor abaixo.";
+    return;
+  }
+
+  for (const file of e.dataTransfer.files) {
+    await uploadFile(file);
+  }
+});
+
+// Fallback: input file
+document.getElementById("fileInput").addEventListener("change", async e => {
+  for (const file of e.target.files) {
+    await uploadFile(file);
+  }
+});
+
+async function uploadFile(file) {
+  status.textContent = `Enviando ${file.name}...`;
+
+  await fetch("http://localhost:8080/upload", {
+    method: "POST",
+    headers: { "X-Filename": file.name },
+    body: file   // envia o arquivo diretamente
+  });
+
+  status.textContent = `Arquivo ${file.name} enviado`;
+  loadFiles();
+}
+
+async function loadFiles() {
+  const res = await fetch("http://localhost:8080/files");
+  const files = await res.json();
+  fileList.innerHTML = "";
+  files.forEach(f => {
+    const li = document.createElement("li");
+    li.innerHTML = `<a href="http://localhost:8080/download/${encodeURIComponent(f)}" target="_blank">${f}</a>`;
+    fileList.appendChild(li);
+  });
+}
+loadFiles();
+</script>
+</body>
+</html>
