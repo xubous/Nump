@@ -3,54 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <title>NUMP</title>
-<style>
-body {
-  background: #0f172a;
-  color: #e5e7eb;
-  font-family: sans-serif;
-  padding: 20px;
-}
-textarea, button, input {
-  margin-top: 6px;
-}
-#drop {
-  margin-top: 20px;
-  padding: 30px;
-  border: 2px dashed #38bdf8;
-  text-align: center;
-  transition: background 0.3s;
-}
-ul { list-style: none; padding: 0; }
-li { margin: 4px 0; }
-</style>
+<link rel="stylesheet" href="./styles/style.css">
 </head>
 <body>
-<h1>NUMP</h1>
-
-<!-- TO-DO -->
-<h3>To-do</h3>
-<input id="taskInput" placeholder="Nova tarefa">
-<button onclick="addTask()">Adicionar</button>
-<ul id="taskList"></ul>
-
-<!-- NOTAS -->
-<h3>Notas</h3>
-<textarea id="note" rows="4" cols="40"></textarea><br>
-<button onclick="addNote()">Adicionar nota</button>
-<ul id="noteList"></ul>
-
-<!-- POMODORO -->
-<h3>Pomodoro</h3>
-<input id="minutes" type="number" value="25" min="1"> min
-<button onclick="startPomodoro()">Iniciar</button>
-<p id="timer"></p>
-
-<!-- UPLOAD -->
-<h3>Transferência de arquivos (8080)</h3>
-<div id="drop">Arraste arquivos aqui</div>
-<input type="file" id="fileInput" multiple>
-<p id="status"></p>
-<ul id="fileList"></ul>
+  <div class="main-content">
+    <div class="content">
+      <h1>NUMP</h1>
+      
+      <!-- TO-DO -->
+      <div class="elements">
+        <div class="todo">
+          <h3>To-do</h3>
+          <input id="taskInput" placeholder="Nova tarefa">
+          <button onclick="addTask()">Adicionar</button>
+          <ul id="taskList"></ul>
+        </div>
+        
+        <!-- NOTAS -->
+        <div class="notas">
+          <h3>Notas</h3>
+          <textarea id="note" rows="4" cols="40"></textarea><br>
+          <button onclick="addNote()">Adicionar nota</button>
+          <ul id="noteList"></ul>
+        </div>
+        
+        <!-- POMODORO -->
+        <div class="pomodoro">
+          <h3>Pomodoro</h3>
+          <input id="minutes" type="number" value="25" min="1"> min
+          <button onclick="startPomodoro()">Iniciar</button>
+          <p id="timer"></p>
+        </div>
+        
+        <!-- UPLOAD -->
+        <div class="upload">
+          <h3>Transferência de arquivos (8080)</h3>
+          <div id="drop">Arraste arquivos aqui</div>
+          <input type="file" id="fileInput" multiple>
+          <p id="status"></p>
+          <ul id="fileList"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script src="js/neutralino.js"></script>
 <script>

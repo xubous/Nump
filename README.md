@@ -1,28 +1,15 @@
-NUMP é uma ferramenta construída com Neutralino.js que ajuda nas tarefas do dia a dia em um ambiente leve e multiplataforma.
-Ela combina a simplicidade de aplicações web com a performance de apps nativos, sem depender de frameworks pesados.
-✨ Recursos
+# neutralinojs-minimal
 
-    📂 Transferência de arquivos via servidor local:
+The default template for a Neutralinojs app. It's possible to use your favorite frontend framework by using [these steps](https://neutralino.js.org/docs/getting-started/using-frontend-libraries).
 
-        POST /upload → envia arquivos para a pasta uploads/
+## Contributors
 
-        GET /files → lista os arquivos disponíveis
+[![Contributors](https://contrib.rocks/image?repo=neutralinojs/neutralinojs-minimal)](https://github.com/neutralinojs/neutralinojs-minimal/graphs/contributors)
 
-        GET /download/:nome → baixa arquivos específicos
+## License
 
-    ✅ Gerenciamento de To‑Do list: adicione e remova tarefas facilmente.
+[MIT](LICENSE)
 
-    📝 Anotações diárias: salvas localmente em notes.json.
+## Icon credits
 
-    ⏰ Cronômetro Pomodoro: personalizável para ciclos de foco e descanso.
-
-    🔄 Sincronização futura: preparado para integração com backend.
-
-    📰 Acesso a notícias via API (em desenvolvimento).
-
-🚀 Instalação e execução
-Pré‑requisitos
-
-    Node.js instalado
-
-    Neutralino CLI (npm install -g @neutralinojs/neu)
+- `trayIcon.png` - Made by [Freepik](https://www.freepik.com) and downloaded from [Flaticon](https://www.flaticon.com)
