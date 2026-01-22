@@ -1,46 +1,35 @@
-NUMP
+# NUMP
 
-NUMP é um aplicativo leve e multiplataforma desenvolvido com Electron, focado em organizar tarefas e utilidades do dia a dia em um único lugar.
+NUMP é um aplicativo leve e multiplataforma desenvolvido com **Electron**, focado em organizar tarefas e utilidades do dia a dia em um único lugar.
 
 O projeto reúne ferramentas essenciais de produtividade e está estruturado para crescer com integrações futuras.
 
-Funcionalidades
+## Funcionalidades
 
-Transferência de arquivos via servidor local
+- Transferência de arquivos via servidor local  
+- Gerenciamento de tarefas (To-Do List)  
+- Cronômetro Pomodoro  
+- Anotações diárias  
+- Estrutura preparada para integração com backend  
+- Consumo de notícias via API (planejado)
 
-Gerenciamento de tarefas (To-Do List)
+## Tecnologias utilizadas
 
-Cronômetro Pomodoro
+- Electron  
+- Node.js  
+- JavaScript  
+- HTML  
+- CSS  
+- npm  
 
-Anotações diárias
-
-Estrutura preparada para integração com backend
-
-Consumo de notícias via API (planejado)
-
-Tecnologias utilizadas
-
-Electron
-
-Node.js
-
-JavaScript
-
-HTML
-
-CSS
-
-npm
-
-Requisitos
+## Requisitos
 
 Antes de rodar o projeto, certifique-se de ter instalado:
 
-Node.js (versão LTS recomendada)
+- Node.js (versão LTS recomendada)
+- npm
 
-npm
-
-Estrutura do projeto
+## Estrutura do projeto
 
 Estrutura geral do repositório:
 
@@ -53,7 +42,6 @@ NUMP/
 ├── package.json
 ├── package-lock.json
 └── README.md
-
 Instalação
 
 Clone o repositório:
@@ -104,5 +92,4 @@ Gera aplicativo .app ou instalador para macOS.
 Os arquivos finais ficarão disponíveis na pasta build/.
 
 Status do projeto
-
 Projeto em desenvolvimento ativo. Funcionalidades adicionais e integrações estão em planejamento.
