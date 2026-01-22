@@ -1,67 +1,232 @@
-import http from "http";
-import fs from "fs";
-import path from "path";
+const express = require("express");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
+const { app: electronApp } = require("electron");
 
-const uploadDir = "./uploads";
+const app = express();
+const PORT = 8080;
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+// =====================================
+// DIRETÓRIO CORRETO (Electron)
+// =====================================
+let uploadDir;
+
+// Função para obter o diretório de dados
+function getDataDir() {
+    // Durante o desenvolvimento, usa um diretório local
+    if (!electronApp.isReady()) {
+        return path.join(__dirname, "uploads");
+    }
+    const DATA_DIR = electronApp.getPath("userData");
+    return path.join(DATA_DIR, "uploads");
 }
 
-http.createServer((req, res) => {
-  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+// =====================================
+// MIDDLEWARES
+// =====================================
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "DELETE"],
+    allowedHeaders: ["Content-Type"]
+}));
+app.use(express.json());
 
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "X-Filename, Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
-
-  // Upload
-  if (req.method === "POST" && parsedUrl.pathname === "/upload") {
-    const filename = req.headers["x-filename"] || "file.bin";
-    const filepath = path.join(uploadDir, filename);
-
-    const stream = fs.createWriteStream(filepath);
-    req.pipe(stream);
-
-    req.on("end", () => {
-      res.writeHead(200);
-      res.end("OK");
-    });
-    return;
-  }
-
-  // Listar arquivos
-  if (req.method === "GET" && parsedUrl.pathname === "/files") {
-    const files = fs.readdirSync(uploadDir);
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(files));
-    return;
-  }
-
-  // Download
-  if (req.method === "GET" && parsedUrl.pathname.startsWith("/download/")) {
-    const filename = decodeURIComponent(parsedUrl.pathname.replace("/download/", ""));
-    const filepath = path.join(uploadDir, filename);
-
-    if (fs.existsSync(filepath)) {
-      res.writeHead(200, { "Content-Disposition": `attachment; filename="${filename}"` });
-      fs.createReadStream(filepath).pipe(res);
+// =====================================
+// UPLOADS
+// =====================================
+function initializeUploadDir() {
+    uploadDir = getDataDir();
+    
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        console.log("[DEBUG] Pasta uploads criada:", uploadDir);
     } else {
-      res.writeHead(404);
-      res.end("Arquivo não encontrado");
+        console.log("[DEBUG] Pasta uploads já existe:", uploadDir);
     }
-    return;
-  }
+}
 
-  res.writeHead(404);
-  res.end("Not Found");
-}).listen(8080, () => {
-  console.log("Servidor ativo em http://localhost:8080");
+const storage = multer.diskStorage({
+    destination: (_, __, cb) => cb(null, uploadDir),
+    filename: (_, file, cb) => cb(null, file.originalname)
 });
+
+const upload = multer({ storage });
+
+// =====================================
+// PÁGINA PRINCIPAL - LISTA SIMPLES
+// =====================================
+app.get("/", (_, res) => {
+    try {
+        const files = fs.readdirSync(uploadDir).map(file => {
+            const stats = fs.statSync(path.join(uploadDir, file));
+            return { name: file, size: stats.size };
+        });
+
+        const filesList = files.map(f => {
+            const sizeKB = (f.size / 1024).toFixed(2);
+            return `
+                <tr>
+                    <td>${f.name}</td>
+                    <td>${sizeKB} KB</td>
+                    <td>
+                        <a href="/download/${encodeURIComponent(f.name)}" download>Baixar</a>
+                        <a href="/delete/${encodeURIComponent(f.name)}" onclick="return confirm('Excluir ${f.name}?')">Excluir</a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nump - Arquivos Compartilhados</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #1a1a1a; color: white; }
+        h1 { color: #4CAF50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #2d2d2d; }
+        a { color: #4CAF50; margin-right: 15px; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .empty { text-align: center; padding: 40px; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>📁 Arquivos Compartilhados</h1>
+    ${files.length === 0 ? 
+        '<p class="empty">Nenhum arquivo disponível. Arraste arquivos no app Nump para compartilhar.</p>' :
+        `<table>
+            <tr>
+                <th>Arquivo</th>
+                <th>Tamanho</th>
+                <th>Ações</th>
+            </tr>
+            ${filesList}
+        </table>`
+    }
+    <script>
+        setTimeout(() => location.reload(), 5000);
+    </script>
+</body>
+</html>
+        `);
+    } catch (error) {
+        res.send('<h1>Erro ao carregar arquivos</h1>');
+    }
+});
+
+// =====================================
+// ROTAS API
+// =====================================
+app.get("/api/hello", (_, res) => {
+    console.log("[DEBUG] GET /api/hello");
+    res.json({ message: "Backend rodando!" });
+});
+
+app.post("/api/upload", upload.single("files"), (req, res) => {
+    if (!req.file) {
+        console.error("[ERROR] Nenhum arquivo recebido");
+        return res.status(400).json({ success: false });
+    }
+    console.log("[DEBUG] Upload:", req.file.originalname, req.file.size);
+    res.json({
+        success: true,
+        filename: req.file.originalname,
+        size: req.file.size
+    });
+});
+
+app.get("/api/files", (_, res) => {
+    try {
+        const files = fs.readdirSync(uploadDir).map(file => {
+            const stats = fs.statSync(path.join(uploadDir, file));
+            return { name: file, size: stats.size };
+        });
+        res.json({ files });
+    } catch (error) {
+        console.error("[ERROR] Erro ao listar arquivos:", error);
+        res.json({ files: [] });
+    }
+});
+
+// DOWNLOAD DIRETO
+app.get("/download/:filename", (req, res) => {
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Arquivo não encontrado");
+    }
+    res.download(filePath);
+});
+
+// DELETE VIA GET (para funcionar em links)
+app.get("/delete/:filename", (req, res) => {
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Arquivo não encontrado");
+    }
+    fs.unlinkSync(filePath);
+    console.log("[DEBUG] Arquivo deletado:", req.params.filename);
+    res.redirect('/');
+});
+
+// Manter rotas antigas para compatibilidade
+app.get("/api/files/:filename/download", (req, res) => {
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Arquivo não encontrado");
+    }
+    res.download(filePath);
+});
+
+app.delete("/api/files/:filename", (req, res) => {
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Arquivo não encontrado");
+    }
+    fs.unlinkSync(filePath);
+    console.log("[DEBUG] Arquivo deletado:", req.params.filename);
+    res.json({ success: true });
+});
+
+// =====================================
+// START (CONTROLADO)
+// =====================================
+let started = false;
+
+function startServer() {
+    if (started) return;
+    started = true;
+    
+    initializeUploadDir();
+    
+    // 🔥 ESCUTA EM TODAS AS INTERFACES DE REDE (0.0.0.0)
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n${'='.repeat(50)}`);
+        console.log("📡 NUMP - COMPARTILHAMENTO DE ARQUIVOS");
+        console.log('='.repeat(50));
+        console.log(`✓ Servidor rodando na porta ${PORT}`);
+        console.log(`✓ Pasta de uploads: ${uploadDir}`);
+        console.log('');
+        
+        // Mostra o IP local para compartilhamento
+        const networkInterfaces = require('os').networkInterfaces();
+        console.log("🌐 ACESSE DE OUTROS DISPOSITIVOS:");
+        console.log(`   Local: http://localhost:${PORT}`);
+        
+        Object.keys(networkInterfaces).forEach(interfaceName => {
+            networkInterfaces[interfaceName].forEach(iface => {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    console.log(`   Rede:  http://${iface.address}:${PORT}`);
+                }
+            });
+        });
+        console.log('='.repeat(50) + '\n');
+    });
+}
+
+module.exports = { startServer };

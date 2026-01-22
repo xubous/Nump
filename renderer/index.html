@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nump</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: system-ui, sans-serif;
+}
+body {
+    background-color: black;
+    color: white;
+    overflow: hidden;
+}
+/* ===== TITLEBAR ===== */
+.titlebar {
+    height: 35px;
+    background-color: #1a1a1a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid #333;
+    -webkit-app-region: drag;
+}
+.titlebar-buttons {
+    display: flex;
+    gap: 5px;
+    -webkit-app-region: no-drag;
+}
+.titlebar-buttons button {
+    width: 30px;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+}
+.titlebar-buttons button:hover {
+    background-color: #333;
+}
+/* ===== LAYOUT ===== */
+.content-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - 35px);
+    padding: 20px;
+    gap: 30px;
+    -webkit-app-region: no-drag;
+}
+
+.column-left {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.column-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* ===== CARDS ===== */
+.to-do, .pomodoro, .files {
+    width: 280px;
+    border: 2px solid white;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.to-do {
+    height: 500px;
+}
+
+.to-do h2, .pomodoro h2, .files h2 {
+    margin-bottom: 5px;
+}
+
+/* ===== TO-DO ===== */
+.to-do textarea {
+    resize: none;
+    height: 60px;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid white;
+    padding: 8px;
+}
+.to-do button {
+    cursor: pointer;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid white;
+    padding: 8px;
+}
+.to-do button:hover {
+    background-color: #333;
+}
+#list-items-todo {
+    list-style: none;
+    overflow-y: auto;
+    flex: 1;
+}
+#list-items-todo li {
+    border: 1px solid white;
+    padding: 6px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#list-items-todo li p {
+    flex: 1;
+    word-wrap: break-word;
+}
+#list-items-todo li button {
+    margin-left: 10px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* ===== POMODORO ===== */
+.timer {
+    border: 1px solid white;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+.time-input {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+.time-input input {
+    width: 60px;
+    text-align: center;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid white;
+    padding: 5px;
+}
+.timer button {
+    width: 100%;
+    cursor: pointer;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid white;
+    padding: 8px;
+}
+.timer button:hover {
+    background-color: #333;
+}
+
+/* ===== FILES ===== */
+.drop-area {
+    height: 100px;
+    border: 2px dashed white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.drop-area.dragover {
+    border-color: #4CAF50;
+    background-color: #1a1a1a;
+}
+.files button {
+    cursor: pointer;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid white;
+    padding: 8px;
+}
+.files button:hover {
+    background-color: #333;
+}
+#files-list {
+    list-style: none;
+    max-height: 150px;
+    overflow-y: auto;
+}
+#files-list li {
+    border: 1px solid white;
+    padding: 6px;
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+::-webkit-scrollbar-thumb {
+    background: white;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #ccc;
+}
+</style>
+</head>
+<body>
+<!-- ===== TITLEBAR ===== -->
+<div class="titlebar">
+    <div>Nump</div>
+    <div class="titlebar-buttons">
+        <button id="minimize-btn">−</button>
+        <button id="maximize-btn">□</button>
+        <button id="close-btn">×</button>
+    </div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="content-main">
+    <!-- COLUNA ESQUERDA: POMODORO + FILES -->
+    <div class="column-left">
+        <!-- POMODORO -->
+        <div class="pomodoro">
+            <h2>Pomodoro</h2>
+            <div class="timer">
+                <div class="time-input">
+                    <input type="number" id="hours" value="00" min="0" max="23">
+                    <span>:</span>
+                    <input type="number" id="minutes" value="25" min="0" max="59">
+                    <span>:</span>
+                    <input type="number" id="seconds" value="00" min="0" max="59">
+                </div>
+                <button id="init-timer">Iniciar</button>
+                <button id="reset-timer">Resetar</button>
+            </div>
+        </div>
+
+        <!-- FILES -->
+        <div class="files">
+            <h2>Files</h2>
+            <div class="drop-area" id="drop-area">
+                Arraste arquivos aqui
+            </div>
+            <button id="select-files-btn">Selecionar Arquivos</button>
+            <button id="load-files-btn">Carregar Arquivos</button>
+            <ul id="files-list"></ul>
+        </div>
+    </div>
+
+    <!-- COLUNA DIREITA: TO-DO -->
+    <div class="column-right">
+        <div class="to-do">
+            <h2>To-Do</h2>
+            <textarea id="text-task-todo" placeholder="Nova tarefa..."></textarea>
+            <button id="send-task-todo">Adicionar</button>
+            <ul id="list-items-todo"></ul>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="file-input" multiple hidden>
+<script src="renderer.js"></script>
+</body>
+</html>
