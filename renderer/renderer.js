@@ -165,7 +165,15 @@ loadBtn.onclick = () => {
 // =====================================================
 async function uploadFile(file) {
     const li = document.createElement("li");
-    li.innerHTML = `${file.name} ⏳`;
+    const container = document.createElement("div");
+    container.className = "file-item-container";
+    
+    const status = document.createElement("div");
+    status.className = "file-status";
+    status.innerHTML = `<span>${file.name}</span> <span>⏳</span>`;
+    
+    container.appendChild(status);
+    li.appendChild(container);
     filesList.appendChild(li);
 
     const fd = new FormData();
@@ -179,12 +187,33 @@ async function uploadFile(file) {
         const d = await r.json();
         
         if (d.success) {
-            li.innerHTML = `${file.name} ✓`;
+            // Obter IP local
+            const ipResponse = await fetch(`${API}/api/network-info`);
+            const { ip } = await ipResponse.json();
+            const downloadUrl = `http://${ip}:8080/download/${encodeURIComponent(file.name)}`;
+            
+            status.innerHTML = `<span>${file.name}</span> <span>✓</span>`;
+            
+            const linkDiv = document.createElement("div");
+            linkDiv.className = "file-link";
+            linkDiv.textContent = downloadUrl;
+            linkDiv.title = "Clique para copiar";
+            linkDiv.onclick = () => {
+                navigator.clipboard.writeText(downloadUrl).then(() => {
+                    const originalText = linkDiv.textContent;
+                    linkDiv.textContent = "✓ Copiado!";
+                    setTimeout(() => {
+                        linkDiv.textContent = originalText;
+                    }, 1500);
+                });
+            };
+            
+            container.appendChild(linkDiv);
         } else {
-            li.innerHTML = `${file.name} ✗`;
+            status.innerHTML = `<span>${file.name}</span> <span>✗</span>`;
         }
     } catch (error) {
         console.error("[ERROR] Upload falhou:", error);
-        li.innerHTML = `${file.name} ✗`;
+        status.innerHTML = `<span>${file.name}</span> <span>✗</span>`;
     }
 }
