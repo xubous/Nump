@@ -191,9 +191,37 @@ body {
 }
 #files-list li {
     border: 1px solid white;
-    padding: 6px;
+    padding: 8px;
     margin-top: 5px;
     font-size: 12px;
+}
+
+.file-item-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.file-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.file-link {
+    background: #1a1a1a;
+    border: 1px solid #4CAF50;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: #4CAF50;
+    word-break: break-all;
+    cursor: pointer;
+    font-family: monospace;
+}
+
+.file-link:hover {
+    background: #2d2d2d;
 }
 
 /* Scrollbar customizada */
