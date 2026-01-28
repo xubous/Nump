@@ -23,6 +23,19 @@ function getDataDir() {
     return path.join(DATA_DIR, "uploads");
 }
 
+// Função para obter IP local
+function getLocalIP() {
+    const networkInterfaces = require('os').networkInterfaces();
+    for (const interfaceName in networkInterfaces) {
+        for (const iface of networkInterfaces[interfaceName]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return 'localhost';
+}
+
 // =====================================
 // MIDDLEWARES
 // =====================================
@@ -55,7 +68,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // =====================================
-// PÁGINA PRINCIPAL - LISTA SIMPLES
+// PÁGINA PRINCIPAL
 // =====================================
 app.get("/", (_, res) => {
     try {
@@ -63,20 +76,6 @@ app.get("/", (_, res) => {
             const stats = fs.statSync(path.join(uploadDir, file));
             return { name: file, size: stats.size };
         });
-
-        const filesList = files.map(f => {
-            const sizeKB = (f.size / 1024).toFixed(2);
-            return `
-                <tr>
-                    <td>${f.name}</td>
-                    <td>${sizeKB} KB</td>
-                    <td>
-                        <a href="/download/${encodeURIComponent(f.name)}" download>Baixar</a>
-                        <a href="/delete/${encodeURIComponent(f.name)}" onclick="return confirm('Excluir ${f.name}?')">Excluir</a>
-                    </td>
-                </tr>
-            `;
-        }).join('');
 
         res.send(`
 <!DOCTYPE html>
@@ -106,7 +105,19 @@ app.get("/", (_, res) => {
                 <th>Tamanho</th>
                 <th>Ações</th>
             </tr>
-            ${filesList}
+            ${files.map(f => {
+                const sizeKB = (f.size / 1024).toFixed(2);
+                return `
+                    <tr>
+                        <td>${f.name}</td>
+                        <td>${sizeKB} KB</td>
+                        <td>
+                            <a href="/download/${encodeURIComponent(f.name)}" download>Baixar</a>
+                            <a href="/delete/${encodeURIComponent(f.name)}" onclick="return confirm('Excluir ${f.name}?')">Excluir</a>
+                        </td>
+                    </tr>
+                `;
+            }).join('')}
         </table>`
     }
     <script>
@@ -126,6 +137,11 @@ app.get("/", (_, res) => {
 app.get("/api/hello", (_, res) => {
     console.log("[DEBUG] GET /api/hello");
     res.json({ message: "Backend rodando!" });
+});
+
+// Nova rota para obter IP da rede
+app.get("/api/network-info", (_, res) => {
+    res.json({ ip: getLocalIP() });
 });
 
 app.post("/api/upload", upload.single("files"), (req, res) => {
