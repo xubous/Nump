@@ -26,6 +26,20 @@ function getDataDir() {
 // Função para obter IP local
 function getLocalIP() {
     const networkInterfaces = require('os').networkInterfaces();
+    
+    // Primeiro tenta encontrar IP 192.168.x.x
+    for (const interfaceName in networkInterfaces) {
+        for (const iface of networkInterfaces[interfaceName]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                // Prioriza IPs que começam com 192.168
+                if (iface.address.startsWith('192.168.')) {
+                    return iface.address;
+                }
+            }
+        }
+    }
+    
+    // Se não encontrar 192.168, retorna qualquer IP não-interno
     for (const interfaceName in networkInterfaces) {
         for (const iface of networkInterfaces[interfaceName]) {
             if (iface.family === 'IPv4' && !iface.internal) {
@@ -33,6 +47,7 @@ function getLocalIP() {
             }
         }
     }
+    
     return 'localhost';
 }
 
@@ -131,17 +146,13 @@ app.get("/", (_, res) => {
     }
 });
 
-// =====================================
-// ROTAS API
-// =====================================
-app.get("/api/hello", (_, res) => {
-    console.log("[DEBUG] GET /api/hello");
-    res.json({ message: "Backend rodando!" });
-});
-
 // Nova rota para obter IP da rede
 app.get("/api/network-info", (_, res) => {
-    res.json({ ip: getLocalIP() });
+    const localIP = getLocalIP();
+    res.json({ 
+        localIP: localIP,  // IP da rede local (192.168.0.x)
+        ip: localIP        // Mantém compatibilidade
+    });
 });
 
 app.post("/api/upload", upload.single("files"), (req, res) => {

@@ -1,4 +1,9 @@
 // =====================================================
+// CONFIGURAÇÃO DA API
+// =====================================================
+const API = "http://localhost:8080";
+
+// =====================================================
 // 🔴 BLOQUEIO GLOBAL DE DRAG (OBRIGATÓRIO NO ELECTRON)
 // =====================================================
 window.addEventListener("dragover", e => {
@@ -23,27 +28,6 @@ document.getElementById("maximize-btn")?.addEventListener("click", () => {
 document.getElementById("close-btn")?.addEventListener("click", () => {
     window.electron?.close();
 });
-
-// =====================================================
-// BACKEND CHECK
-// =====================================================
-const API = "http://127.0.0.1:8080";
-
-async function aguardarServidor() {
-    for (let i = 0; i < 20; i++) {
-        try {
-            const r = await fetch(`${API}/api/hello`);
-            if (r.ok) {
-                console.log("[OK] Backend ativo");
-                return;
-            }
-        } catch {}
-        await new Promise(r => setTimeout(r, 500));
-    }
-    console.error("[ERRO] Backend não iniciou");
-}
-
-document.addEventListener("DOMContentLoaded", aguardarServidor);
 
 // =====================================================
 // TO-DO
@@ -187,10 +171,13 @@ async function uploadFile(file) {
         const d = await r.json();
         
         if (d.success) {
-            // Obter IP local
+            // Obter IP local da rede
             const ipResponse = await fetch(`${API}/api/network-info`);
-            const { ip } = await ipResponse.json();
-            const downloadUrl = `http://${ip}:8080/download/${encodeURIComponent(file.name)}`;
+            const data = await ipResponse.json();
+            
+            // Usar o localIP que retorna o endereço 192.168.0.x
+            const localIP = data.localIP || data.ip;
+            const downloadUrl = `http://${localIP}:8080/download/${encodeURIComponent(file.name)}`;
             
             status.innerHTML = `<span>${file.name}</span> <span>✓</span>`;
             
