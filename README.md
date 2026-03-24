@@ -1,69 +1,103 @@
-# Api-Link-Shortener
+# Nump 🔗
 
-## Description
+**Nump** is a REST API for URL shortening, built with **Spring Boot** and containerized with **Docker**. It converts long URLs into short, unique identifiers and redirects users to the original destination efficiently.
 
-Api-Link-Shortener is a REST API designed to convert long URLs into short, unique identifiers. These shortened links redirect users to the original URL efficiently and can be extended with features such as analytics, expiration, and link management.
+---
 
-## Features
+## ✨ Features
 
-- URL shortening
-- Redirection to original URL
-- Unique code generation
-- Scalable architecture for future enhancements
+- **URL Shortening** — generates a compact, unique code for any long URL
+- **Fast Redirection** — resolves the short code and redirects to the original URL
+- **Unique Code Generation** — collision-resistant identifier generation
+- **Dockerized** — fully containerized for consistent execution across environments
+- **Scalable Architecture** — designed to grow with caching, analytics, and more
 
-## Endpoints
+---
 
-### Create short URL
+## 🚀 Endpoints
+
+### Shorten a URL
+```http
 POST /shorten
+Content-Type: application/json
 
-Request:
 {
   "url": "https://example.com/very/long/link"
 }
-
-Response:
+```
+**Response:**
+```json
 {
   "short_url": "http://localhost:8080/abc123"
 }
+```
 
 ### Redirect
+```http
 GET /{code}
+```
+Redirects the user to the original URL associated with the given code.
 
-Redirects to the original URL.
+---
 
-## Project Structure
+## 🐳 Running with Docker
 
-Api-Link-Shortener/
+```bash
+# Build the image
+docker build -t nump .
+
+# Run the container
+docker run -p 8080:8080 nump
+```
+
+Or with Docker Compose:
+
+```bash
+docker-compose up
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+Nump/
 │
 ├── src/
-│   ├── controllers/
-│   ├── services/
-│   ├── repositories/
-│   └── models/
+│   ├── controllers/     # HTTP layer — handles incoming requests
+│   ├── services/        # Business logic — URL shortening and resolution
+│   ├── repositories/    # Data access layer
+│   └── models/          # Domain entities
 │
-├── database/
-├── config/
-└── main.*
+├── database/            # Database migrations and configuration
+├── config/              # Application configuration files
+└── main.*               # Application entry point
+```
 
-## How to Run
+---
 
-1. Clone the repository:
-git clone <repo-url>
+## 🛠️ Tech Stack
 
-2. Install dependencies and run:
-make run
-or
-npm install
-npm start
+| Layer | Technology |
+|-------|-----------|
+| Framework | Spring Boot |
+| Containerization | Docker / Docker Compose |
+| Language | Java |
+| Database | Configurable (H2 / PostgreSQL) |
 
-## Improvements
+---
 
-- Add caching (Redis)
-- Implement rate limiting
-- Add analytics dashboard
-- Support custom URLs
-- Structured logging
+## 📈 Planned Improvements
 
-## License
+- **Caching** with Redis for faster redirects
+- **Rate Limiting** to prevent abuse
+- **Analytics Dashboard** for tracking link usage
+- **Custom Short URLs** — user-defined slugs
+- **Link Expiration** — time-based URL invalidation
+- **Structured Logging** for observability
+
+---
+
+## 📄 License
 
 Free to use for educational and development purposes.
