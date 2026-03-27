@@ -1,6 +1,7 @@
 package project.xubous.Nump.controller;
 
 import java.util.List;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,22 +22,31 @@ public class FileController
     {
         this.fileService = fileService;
     }
-    
+
     @GetMapping
     public List < File > getAllFile ( )
     {
         return fileService.getAllFile ( );
     }
 
-    @PostMapping
-    public File createFile ( @RequestBody File File )
+    @GetMapping ( "/{id}" )
+    public ResponseEntity < File > getFileById ( @PathVariable Long id )
     {
-        return fileService.saveFile ( File ); 
+        return fileService.getFileById ( id )
+                .map ( ResponseEntity::ok )
+                .orElse ( ResponseEntity.notFound ( ).build ( ) );
+    }
+
+    @PostMapping
+    public File createFile ( @RequestBody File file )
+    {
+        return fileService.saveFile ( file );
     }
 
     @DeleteMapping ( "/{id}" )
-    public void deleteFile ( @PathVariable Long id )
+    public ResponseEntity < Void > deleteFile ( @PathVariable Long id )
     {
         fileService.deleteFile ( id );
+        return ResponseEntity.noContent ( ).build ( );
     }
 }

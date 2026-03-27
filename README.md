@@ -105,3 +105,9 @@ Free to use for educational and development purposes.
 [ ] mudar fluxo construtores ( rota create )
 [ ] yml -> docker
 [ ] testar aplicação
+
+# 1 — regera o .jar com a dependência nova
+./mvnw clean package -DskipTests
+
+# 2 — sobe os containers
+sudo docker-compose up --build
