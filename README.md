@@ -101,3 +101,7 @@ Nump/
 ## 📄 License
 
 Free to use for educational and development purposes.
+
+[ ] mudar fluxo construtores ( rota create )
+[ ] yml -> docker
+[ ] testar aplicação
