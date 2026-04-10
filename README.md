@@ -1,119 +1,210 @@
-# Nump 🔗
+# Nump 📦
 
-**Nump** is a REST API for URL shortening, built with **Spring Boot** and containerized with **Docker**. It converts long URLs into short, unique identifiers and redirects users to the original destination efficiently.
+**Nump** é uma plataforma de compartilhamento de arquivos e encurtamento de links, construída com **Spring Boot** e containerizada com **Docker**. A proposta é ser uma alternativa ao MediaFire — com compactação automática de arquivos, geração de links curtos para download e, futuramente, suporte a uma funcionalidade offline.
 
 ---
 
-## ✨ Features
+## 💡 Visão do Projeto
 
-- **URL Shortening** — generates a compact, unique code for any long URL
-- **Fast Redirection** — resolves the short code and redirects to the original URL
-- **Unique Code Generation** — collision-resistant identifier generation
-- **Dockerized** — fully containerized for consistent execution across environments
-- **Scalable Architecture** — designed to grow with caching, analytics, and more
+O Nump resolve três problemas comuns no compartilhamento de arquivos:
+
+- **Arquivos grandes** são compactados automaticamente em `.zip` antes do upload, reduzindo o tamanho e o tempo de transferência
+- **Links longos e feios** são encurtados em tokens de 8 caracteres, fáceis de copiar e compartilhar
+- **Dependência de internet** será endereçada futuramente com uma funcionalidade offline (em definição)
+
+---
+
+## ✨ Funcionalidades
+
+- **Upload com compactação** — arquivos enviados são compactados automaticamente via `Compactor`
+- **Link de download encurtado** — cada arquivo recebe um token único e um link curto para download
+- **Encurtamento de URLs** — URLs longas viram links curtos com redirecionamento automático
+- **Redirecionamento** — o token resolve para o destino original (URL ou arquivo)
+- **Dockerizado** — execução consistente em qualquer ambiente via Docker Compose
 
 ---
 
 ## 🚀 Endpoints
 
-### Shorten a URL
+### Links
+
+#### Encurtar uma URL
 ```http
-POST /shorten
+POST /links
 Content-Type: application/json
 
 {
-  "url": "https://example.com/very/long/link"
+  "url": "https://exemplo.com/link/muito/longo",
+  "description": "Meu link"
 }
 ```
-**Response:**
+**Resposta:**
 ```json
 {
-  "short_url": "http://localhost:8080/abc123"
+  "id": 1,
+  "url": "https://exemplo.com/link/muito/longo",
+  "urlReduced": "http://localhost:8080/links/r/a1b2c3d4",
+  "token": "a1b2c3d4",
+  "description": "Meu link"
 }
 ```
 
-### Redirect
+#### Redirecionar pelo token
 ```http
-GET /{code}
+GET /links/r/{token}
 ```
-Redirects the user to the original URL associated with the given code.
+Redireciona para a URL original associada ao token.
 
----
-
-## 🐳 Running with Docker
-
-```bash
-# Build the image
-docker build -t nump .
-
-# Run the container
-docker run -p 8080:8080 nump
+#### Listar todos os links
+```http
+GET /links
 ```
 
-Or with Docker Compose:
+#### Buscar link por ID
+```http
+GET /links/{id}
+```
 
-```bash
-docker-compose up
+#### Deletar link
+```http
+DELETE /links/{id}
 ```
 
 ---
 
-## 🏗️ Project Structure
+### Arquivos
+
+#### Upload e compactação
+```http
+POST /files/upload
+Content-Type: multipart/form-data
+
+file: <arquivo>
+```
+**Resposta:**
+```json
+{
+  "id": 1,
+  "path": "/uploads/arquivo_a1b2c3d4.zip",
+  "size": 204800,
+  "token": "a1b2c3d4",
+  "downloadUrl": "http://localhost:8080/files/r/a1b2c3d4"
+}
+```
+
+#### Download pelo token
+```http
+GET /files/r/{token}
+```
+Retorna o arquivo `.zip` para download direto.
+
+#### Listar todos os arquivos
+```http
+GET /files
+```
+
+#### Buscar arquivo por ID
+```http
+GET /files/{id}
+```
+
+#### Deletar arquivo
+```http
+DELETE /files/{id}
+```
+
+---
+
+## 🐳 Executando com Docker
+
+```bash
+# Sobe os containers (API + Banco)
+sudo docker-compose up --build
+```
+
+Para rebuild do `.jar` antes de subir:
+```bash
+# 1 — Regera o .jar
+./mvnw clean package -DskipTests
+
+# 2 — Sobe os containers
+sudo docker-compose up --build
+```
+
+---
+
+## 🏗️ Estrutura do Projeto
 
 ```
 Nump/
 │
 ├── src/
-│   ├── controllers/     # HTTP layer — handles incoming requests
-│   ├── services/        # Business logic — URL shortening and resolution
-│   ├── repositories/    # Data access layer
-│   └── models/          # Domain entities
+│   ├── controller/
+│   │   ├── FileController.java      # Rotas de upload e download de arquivos
+│   │   └── LinkController.java      # Rotas de encurtamento e redirecionamento
+│   │
+│   ├── service/
+│   │   ├── FileService.java         # Lógica de upload, compactação e download
+│   │   ├── LinkService.java         # Lógica de criação e resolução de links
+│   │   ├── Compactor.java           # Compactação de arquivos em .zip
+│   │   └── Shortener.java           # Geração de tokens e links curtos
+│   │
+│   ├── repository/
+│   │   ├── FileRepository.java      # Acesso ao banco para arquivos
+│   │   └── LinkRepository.java      # Acesso ao banco para links
+│   │
+│   └── model/
+│       ├── File.java                # Entidade de arquivo (path, size, token)
+│       └── Link.java                # Entidade de link (url, urlReduced, token)
 │
-├── database/            # Database migrations and configuration
-├── config/              # Application configuration files
-└── main.*               # Application entry point
+├── uploads/                         # Pasta local para armazenar os .zip gerados
+├── docker-compose.yml
+└── pom.xml
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Camada | Tecnologia |
+|--------|-----------|
 | Framework | Spring Boot |
-| Containerization | Docker / Docker Compose |
-| Language | Java |
-| Database | Configurable (H2 / PostgreSQL) |
+| Containerização | Docker / Docker Compose |
+| Linguagem | Java |
+| Banco de Dados | Configurável (H2 / PostgreSQL) |
+| Compactação | `java.util.zip` (ZipOutputStream) |
 
 ---
 
-## 📈 Planned Improvements
+## ✅ CHECKLIST
 
-- **Caching** with Redis for faster redirects
-- **Rate Limiting** to prevent abuse
-- **Analytics Dashboard** for tracking link usage
-- **Custom Short URLs** — user-defined slugs
-- **Link Expiration** — time-based URL invalidation
-- **Structured Logging** for observability
+```
+[X] Mudar fluxo construtores (rota create)
+[X] yml → docker
+[X] Testar aplicação
+[X] Testar rotas da API
+
+[ ] Corrigir Shortener — generateReducedLink deve receber token, não URL completa
+[ ] Corrigir Link.java — construtor (String url, String description) não inicializa campos
+[ ] Adicionar campo token em File.java
+[ ] Implementar Compactor — compactar arquivo em .zip e salvar em /uploads
+[ ] Implementar FileService.uploadAndCompress — salvar path do .zip no banco e gerar link
+[ ] Implementar rota GET /files/r/{token} — ler .zip do disco e retornar como download
+[ ] Verificar FileRepository — adicionar findByToken se necessário
+[ ] Testar fluxo completo: POST /files/upload → link encurtado → GET /files/r/{token} → download do .zip
+
+[ ] (Futuro) Definir e implementar funcionalidade offline
+[ ] (Futuro) Expiração de links e arquivos
+[ ] (Futuro) Rate limiting para evitar abuso
+[ ] (Futuro) Dashboard de analytics de downloads
+```
 
 ---
 
-## CHECKLIST
+## 📈 Próximos Passos
 
-[ X ] mudar fluxo construtores ( rota create )
-[ X ] yml -> docker
-[ X ] testar aplicação
-[ X ] testar rotas da api
-[ ] verificar models Link e File — confirmar @Entity, @Id, @GeneratedValue e todos os campos necessários
-[ ] Compactor — salvar o .zip em disco numa pasta /uploads
-[ ] FileService — uploadAndCompress — salvar o path do .zip no banco e ligar File com Link
-[ ] FileController — rota GET /files/{id}/download — ler o .zip do disco e devolver de verdade
-[ ] FileRepository — adicionar findByToken se necessário
-[ ] Shortener — confirmar que generateReducedLink recebe o token e não a URL completa
-[ ] testar fluxo completo — POST /files/upload → receber link encurtado → acessar link → download do .zip
-
-# 1 — regera o .jar com a dependência nova
-./mvnw clean package -DskipTests
-
-# 2 — sobe os containers
-sudo docker-compose up --build
+1. **Corrigir os bugs** listados acima antes de avançar
+2. **Implementar o `Compactor`** com `ZipOutputStream` do Java
+3. **Implementar o fluxo de upload** — `POST /files/upload` → compacta → salva → retorna link curto
+4. **Implementar o download** — `GET /files/r/{token}` → resolve token → serve o `.zip`
+5. **Definir a funcionalidade offline** — possibilidades: cache local, exportação de pacote, modo sem servidor

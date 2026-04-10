@@ -10,19 +10,21 @@ import project.xubous.Nump.repository.LinkRepository;
 public class LinkService 
 {
     private final LinkRepository linkRepository;
-    private final Shortener shortener;
+    private final Shortener shortener; // injetado para gerar token e URL curta
 
     public LinkService ( LinkRepository linkRepository, Shortener shortener )
     {
         this.linkRepository = linkRepository;
-        this.shortener = shortener;
+        this.shortener      = shortener;
     }
 
+    // retorna todos os links cadastrados no banco
     public List < Link > getAllLink ( )
     {
         return linkRepository.findAll ( );
     }
 
+    // busca um link pelo id — retorna Optional porque pode não existir
     public Optional < Link > getLinkById ( Long id )
     {
         return linkRepository.findById ( id );
@@ -30,13 +32,16 @@ public class LinkService
 
     public Link saveLink ( Link link )
     {
-        String token = shortener.generateToken ( );
-        String urlReduced = shortener.generateReducedLink ( link.getUrl ( ) );
+        String token = shortener.generateToken ( ); // gera token de 8 chars — ex: "a1b2c3d4"
 
-        link.setToken ( token );
-        link.setUrlReduced ( urlReduced );
+        // ANTES (bug): passava link.getUrl() pro generateReducedLink → resultado era "https://google.com/...http://localhost..."
+        // AGORA: passa o token gerado → resultado correto: "http://localhost:8080/links/r/a1b2c3d4"
+        String urlReduced = shortener.generateLinkUrl ( token );
 
-        return linkRepository.save ( link );
+        link.setToken      ( token );      // salva o token na entidade para resolver o redirect depois
+        link.setUrlReduced ( urlReduced ); // salva a URL curta gerada na entidade
+
+        return linkRepository.save ( link ); // persiste no banco e retorna com id gerado
     }
 
     public void deleteLink ( long id )
@@ -44,17 +49,13 @@ public class LinkService
         linkRepository.deleteById ( id );
     }
 
+    // busca um link pelo token — usado na rota de redirecionamento /links/r/{token}
+    // retorna null se não encontrar (tratado no controller)
     public Link getLinkByToken ( String token )
     {
         Optional < Link > linkFound = linkRepository.findByToken ( token );
 
-        if ( linkFound.isPresent ( ) )
-        {
-            return linkFound.get ( );
-        } else
-            {   
-                return null;
-            }
-
+        // se encontrou, retorna o link; se não, retorna null para o controller devolver 404
+        return linkFound.orElse ( null );
     }
 }
