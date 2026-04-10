@@ -2,6 +2,7 @@ package project.xubous.Nump.controller;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,20 +35,35 @@ public class LinkController
     @GetMapping ( "/{id}" )
     public ResponseEntity < Link > getLinkById ( @PathVariable Long id )
     {
-        return linkService.getLinkById ( id )
-                .map ( ResponseEntity::ok )
-                .orElse ( ResponseEntity.notFound ( ).build ( ) );
+        Optional < Link > link = linkService.getLinkById ( id );
+
+        if ( link.isPresent ( ) )
+        {
+            Link linkFound = link.get ( );
+
+            return ResponseEntity.ok ( linkFound );
+        } else
+            {
+                return ResponseEntity.notFound ( ).build ( );
+            }
+
     }
 
     @GetMapping ( "/r/{token}" )
     public ResponseEntity < Void > redirect ( @PathVariable String token )
     {
-        return linkService.getLinkByToken ( token )
-                .map ( link -> ResponseEntity
-                        .status ( HttpStatus.FOUND )
-                        .location ( URI.create ( link.getUrl ( ) ) )
-                        .< Void >build ( ) )
-                .orElse ( ResponseEntity.notFound ( ).build ( ) );
+        Link link = linkService.getLinkByToken ( token );
+
+        if ( link != null )
+        {
+            return ResponseEntity 
+                   .status ( HttpStatus.FOUND )
+                   .location ( URI.create ( link.getUrl ( ) ) )
+                   .build ( );
+        } else
+            {
+                return ResponseEntity.notFound ( ).build ( );
+            }
     }
 
     @PostMapping

@@ -98,13 +98,19 @@ Nump/
 
 ---
 
-## 📄 License
+## CHECKLIST
 
-Free to use for educational and development purposes.
-
-[ ] mudar fluxo construtores ( rota create )
-[ ] yml -> docker
-[ ] testar aplicação
+[ X ] mudar fluxo construtores ( rota create )
+[ X ] yml -> docker
+[ X ] testar aplicação
+[ X ] testar rotas da api
+[ ] verificar models Link e File — confirmar @Entity, @Id, @GeneratedValue e todos os campos necessários
+[ ] Compactor — salvar o .zip em disco numa pasta /uploads
+[ ] FileService — uploadAndCompress — salvar o path do .zip no banco e ligar File com Link
+[ ] FileController — rota GET /files/{id}/download — ler o .zip do disco e devolver de verdade
+[ ] FileRepository — adicionar findByToken se necessário
+[ ] Shortener — confirmar que generateReducedLink recebe o token e não a URL completa
+[ ] testar fluxo completo — POST /files/upload → receber link encurtado → acessar link → download do .zip
 
 # 1 — regera o .jar com a dependência nova
 ./mvnw clean package -DskipTests

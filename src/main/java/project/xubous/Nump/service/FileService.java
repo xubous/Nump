@@ -33,6 +33,6 @@ public class FileService
 
     public void deleteFile ( long id )
     {
-        fileRepository.deleteById ( id ); // ✅ fix
+        fileRepository.deleteById ( id );
     }
 }

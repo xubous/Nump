@@ -26,7 +26,7 @@ public class Link
     @GeneratedValue ( strategy = GenerationType.IDENTITY )
     private Long id;
     private String url;
-    private String url_reduced;
+    private String urlReduced;
     private String token;
     private String description;
 }
