@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nump</title>
+<style>
+:root {
+    --bg: #0f172a;
+    --text: #e2e8f0;
+    --main: #6366f1;
+    --border: rgba(255,255,255,0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+
+body { background: var(--bg); color: var(--text); }
+
+.header {
+    position: fixed; width: 100%; top: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg); z-index: 10;
+}
+
+.nav-container {
+    max-width: 1000px; margin: auto; padding: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+.btn {
+    background: var(--main); color: white;
+    padding: 8px 14px; border-radius: 6px;
+    cursor: pointer; border: none; font-size: 14px;
+}
+.btn:hover { opacity: 0.85; }
+
+.home { margin-top: 100px; text-align: center; padding: 20px; }
+
+.upload-container { max-width: 640px; margin: 30px auto; padding: 0 15px; }
+
+.upload-box {
+    border: 2px dashed var(--border); padding: 40px;
+    border-radius: 10px; cursor: pointer; transition: .2s;
+    text-align: center; color: #94a3b8;
+}
+.upload-box:hover, .upload-box.drag {
+    border-color: var(--main);
+    background: rgba(99,102,241,0.08);
+}
+
+#file-list { margin-top: 24px; list-style: none; }
+
+#file-list li {
+    padding: 14px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.file-info { flex: 1; overflow: hidden; }
+
+.file-name {
+    font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.file-size { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+.file-actions {
+    display: flex; flex-direction: column;
+    align-items: flex-end; gap: 8px; flex-shrink: 0;
+}
+
+.btn-download {
+    background: var(--main); color: white;
+    padding: 5px 14px; border-radius: 5px;
+    text-decoration: none; font-size: 13px; white-space: nowrap;
+}
+.btn-download:hover { opacity: 0.85; }
+
+.file-link-row {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; max-width: 260px;
+}
+
+.file-link-row a {
+    color: #6366f1; text-decoration: none;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.file-link-row a:hover { text-decoration: underline; }
+
+.copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: #94a3b8; padding: 2px 8px;
+    border-radius: 4px; font-size: 11px;
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.copy-btn:hover { color: var(--text); border-color: #6366f1; }
+.copy-btn.copied { color: #22c55e; border-color: #22c55e; }
+
+.empty { text-align: center; color: #64748b; padding: 20px; font-size: 14px; }
+.uploading { color: #94a3b8; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+    <div class="nav-container">
+        <strong>Nump</strong>
+        <button class="btn" id="uploadBtn">Enviar arquivo</button>
+    </div>
+</header>
+
+<div class="home">
+    <h1>Nump</h1>
+    <p>Upload simples de arquivos</p>
+</div>
+
+<input type="file" id="fileInput" multiple hidden>
+
+<div class="upload-container">
+    <div class="upload-box" id="drop-area">Clique ou arraste arquivos aqui</div>
+    <ul id="file-list"></ul>
+</div>
+
+<script>
+const BASE_URL = "http://localhost:8080";
+
+const dropArea  = document.getElementById("drop-area");
+const fileInput = document.getElementById("fileInput");
+const fileList  = document.getElementById("file-list");
+const uploadBtn = document.getElementById("uploadBtn");
+
+uploadBtn.onclick = () => fileInput.click();
+dropArea.onclick  = () => fileInput.click();
+
+dropArea.ondragover  = (e) => { e.preventDefault(); dropArea.classList.add("drag"); };
+dropArea.ondragleave = () => dropArea.classList.remove("drag");
+dropArea.ondrop = (e) => {
+    e.preventDefault();
+    dropArea.classList.remove("drag");
+    handleFiles(e.dataTransfer.files);
+};
+
+fileInput.onchange = () => {
+    handleFiles(fileInput.files);
+    fileInput.value = "";
+};
+
+window.addEventListener("DOMContentLoaded", loadFiles);
+
+// Busca todos os arquivos do backend ao carregar
+async function loadFiles() {
+    try {
+        const res  = await fetch(BASE_URL + "/files");
+        const list = await res.json();
+        fileList.innerHTML = "";
+        if (!list || list.length === 0) {
+            fileList.innerHTML = `<li class="empty">Nenhum arquivo enviado ainda.</li>`;
+            return;
+        }
+        list.forEach(f => addFileItem(f));
+    } catch (err) {
+        fileList.innerHTML = `<li class="empty">Não foi possível carregar os arquivos.</li>`;
+    }
+}
+
+// Cria um item na lista com botão de baixar + link copiável
+function addFileItem(file) {
+    const empty = fileList.querySelector(".empty");
+    if (empty) empty.remove();
+
+    const sizeKB   = file.size ? (file.size / 1024).toFixed(1) + " KB" : "";
+    const fileName = file.path
+        ? file.path.split(/[\\/]/).pop()
+        : "arquivo_" + file.token + ".zip";
+    const url = file.downloadUrl || "";
+
+    const li = document.createElement("li");
+    li.dataset.id = file.id;
+
+    // Lado esquerdo: nome e tamanho
+    const infoDiv = document.createElement("div");
+    infoDiv.className = "file-info";
+    infoDiv.innerHTML = `
+        <div class="file-name" title="${fileName}">${fileName}</div>
+        <div class="file-size">${sizeKB}</div>
+    `;
+
+    // Lado direito: botão baixar + link com botão copiar
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "file-actions";
+
+    const downloadLink = document.createElement("a");
+    downloadLink.className = "btn-download";
+    downloadLink.href = url;
+    downloadLink.target = "_blank";
+    downloadLink.textContent = "⬇ Baixar";
+
+    const linkRow = document.createElement("div");
+    linkRow.className = "file-link-row";
+
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.target = "_blank";
+    anchor.textContent = url;
+    anchor.title = url;
+
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "copy-btn";
+    copyBtn.textContent = "copiar";
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(url).then(() => {
+            copyBtn.textContent = "copiado!";
+            copyBtn.classList.add("copied");
+            setTimeout(() => {
+                copyBtn.textContent = "copiar";
+                copyBtn.classList.remove("copied");
+            }, 2000);
+        });
+    };
+
+    linkRow.appendChild(anchor);
+    linkRow.appendChild(copyBtn);
+    actionsDiv.appendChild(downloadLink);
+    actionsDiv.appendChild(linkRow);
+
+    li.appendChild(infoDiv);
+    li.appendChild(actionsDiv);
+    fileList.appendChild(li);
+}
+
+// Faz upload e adiciona o item na lista
+async function handleFiles(files) {
+    for (const file of [...files]) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <span class="file-name">${file.name}</span>
+            <span class="uploading">enviando...</span>
+        `;
+        fileList.appendChild(li);
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res  = await fetch(BASE_URL + "/files/upload", { method: "POST", body: formData });
+            const data = await res.json();
+
+            if (res.ok) {
+                li.remove();
+                addFileItem(data);
+            } else {
+                li.innerHTML = `
+                    <span class="file-name">${file.name}</span>
+                    <span class="uploading" style="color:#ef4444">erro ${res.status}</span>
+                `;
+            }
+        } catch (err) {
+            li.innerHTML = `
+                <span class="file-name">${file.name}</span>
+                <span class="uploading" style="color:#ef4444">falha na conexão</span>
+            `;
+        }
+    }
+}
+</script>
+
+</body>
+</html>
