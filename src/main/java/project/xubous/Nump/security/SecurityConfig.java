@@ -44,18 +44,13 @@ public class SecurityConfig
             .cors(cors -> cors.configurationSource(corsConfig()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // ✅ Arquivos estáticos — ADICIONE ESSAS LINHAS AQUI
-                .requestMatchers(
-                    "/", "/index.html", "/login.html", "/register.html",
-                    "/*.css", "/*.js", "/*.png", "/*.ico"
-                ).permitAll()
-                // Rotas públicas (já existia)
+                // Rotas públicas
                 .requestMatchers(HttpMethod.POST, "/users/register", "/users/login").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/files/r/**").permitAll()
-                // Apenas ADMIN (já existia)
+                // Apenas ADMIN gerencia usuários
                 .requestMatchers(HttpMethod.GET,    "/users").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
-                // Todo autenticado (já existia)
+                // Todo usuário autenticado pode usar arquivos
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -88,7 +83,10 @@ public class SecurityConfig
     public CorsConfigurationSource corsConfig()
     {
         var config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(List.of(
+            "https://*.vercel.app",
+            "http://localhost:*"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
