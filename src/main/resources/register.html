@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Nump</title>
+    <link rel="stylesheet" href="login.css">
+    <style>
+        * { font-family: Arial, sans-serif; }
+        .input-group .error-msg {
+            color: #f87171;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        .input-group input.invalid {
+            border-color: #f87171;
+            box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.1);
+        }
+        .input-group input.valid {
+            border-color: #34d399;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.error   { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+        .alert.success { background: rgba(52,211,153,0.1);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .password-wrapper { position: relative; }
+        .toggle-pw {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.5;
+            background: none;
+            border: none;
+            color: inherit;
+        }
+        .password-strength {
+            margin-top: 6px;
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+        }
+        .password-strength-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s, background 0.3s;
+            width: 0%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-box">
+        <a href="index.html" class="login-logo">Nump</a>
+        <h2>Criar conta</h2>
+        <p>Junte-se à Nump e simplifique seus arquivos</p>
+
+        <div class="alert error"   id="alertError"></div>
+        <div class="alert success" id="alertSuccess"></div>
+
+        <form id="registerForm" novalidate>
+
+            <div class="input-group">
+                <label for="name">Nome</label>
+                <input type="text" id="name" placeholder="Seu nome completo" autocomplete="name">
+                <span class="error-msg" id="nameError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" placeholder="exemplo@nump.com" autocomplete="email">
+                <span class="error-msg" id="emailError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    <button type="button" class="toggle-pw" id="togglePw" aria-label="Mostrar senha">Mostrar</button>
+                </div>
+                <div class="password-strength">
+                    <div class="password-strength-bar" id="strengthBar"></div>
+                </div>
+                <span class="error-msg" id="passwordError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="confirm">Confirmar senha</label>
+                <div class="password-wrapper">
+                    <input type="password" id="confirm" placeholder="Repita a senha" autocomplete="new-password">
+                    <button type="button" class="toggle-pw" id="toggleConfirm" aria-label="Mostrar confirmação">Mostrar</button>
+                </div>
+                <span class="error-msg" id="confirmError"></span>
+            </div>
+
+            <button type="submit" class="login-btn" id="submitBtn">Criar conta</button>
+
+        </form>
+
+        <p class="register" style="margin-top: 25px;">
+            Já tem conta? <a href="login.html">Entrar agora</a>
+        </p>
+    </div>
+
+    <script>
+        const API = 'http://localhost:8080';
+
+        // ── Elementos ──────────────────────────────────────────────────────────
+        const form          = document.getElementById('registerForm');
+        const nameInput     = document.getElementById('name');
+        const emailInput    = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmInput  = document.getElementById('confirm');
+        const submitBtn     = document.getElementById('submitBtn');
+        const alertError    = document.getElementById('alertError');
+        const alertSuccess  = document.getElementById('alertSuccess');
+        const strengthBar   = document.getElementById('strengthBar');
+
+        // ── Mostrar/ocultar senha ──────────────────────────────────────────────
+        document.getElementById('togglePw').addEventListener('click', () => toggleVisibility(passwordInput));
+        document.getElementById('toggleConfirm').addEventListener('click', () => toggleVisibility(confirmInput));
+
+        function toggleVisibility(input)
+        {
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // ── Indicador de força da senha ────────────────────────────────────────
+        passwordInput.addEventListener('input', () =>
+        {
+            const pw  = passwordInput.value;
+            let score = 0;
+            if (pw.length >= 6)  score++;
+            if (pw.length >= 10) score++;
+            if (/[A-Z]/.test(pw)) score++;
+            if (/[0-9]/.test(pw)) score++;
+            if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+            const pct    = (score / 5) * 100;
+            const colors = ['#f87171', '#fb923c', '#fbbf24', '#34d399', '#34d399'];
+            strengthBar.style.width      = pct + '%';
+            strengthBar.style.background = colors[Math.max(0, score - 1)] || 'transparent';
+        });
+
+        // ── Validação em tempo real ────────────────────────────────────────────
+        nameInput.addEventListener('blur',     () => validateName());
+        emailInput.addEventListener('blur',    () => validateEmail());
+        passwordInput.addEventListener('blur', () => validatePassword());
+        confirmInput.addEventListener('blur',  () => validateConfirm());
+
+        function setFieldState(input, errorEl, message)
+        {
+            if (message)
+            {
+                input.classList.add('invalid');
+                input.classList.remove('valid');
+                errorEl.textContent    = message;
+                errorEl.style.display  = 'block';
+                return false;
+            }
+            input.classList.remove('invalid');
+            input.classList.add('valid');
+            errorEl.style.display = 'none';
+            return true;
+        }
+
+        function validateName()
+        {
+            const v = nameInput.value.trim();
+            if (!v)          return setFieldState(nameInput, document.getElementById('nameError'), 'Nome é obrigatório');
+            if (v.length < 2) return setFieldState(nameInput, document.getElementById('nameError'), 'Mínimo 2 caracteres');
+            return setFieldState(nameInput, document.getElementById('nameError'), '');
+        }
+
+        function validateEmail()
+        {
+            const v = emailInput.value.trim();
+            if (!v) return setFieldState(emailInput, document.getElementById('emailError'), 'Email é obrigatório');
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+                return setFieldState(emailInput, document.getElementById('emailError'), 'Email inválido');
+            return setFieldState(emailInput, document.getElementById('emailError'), '');
+        }
+
+        function validatePassword()
+        {
+            const v = passwordInput.value;
+            if (!v)          return setFieldState(passwordInput, document.getElementById('passwordError'), 'Senha é obrigatória');
+            if (v.length < 6) return setFieldState(passwordInput, document.getElementById('passwordError'), 'Mínimo 6 caracteres');
+            return setFieldState(passwordInput, document.getElementById('passwordError'), '');
+        }
+
+        function validateConfirm()
+        {
+            const v = confirmInput.value;
+            if (v !== passwordInput.value)
+                return setFieldState(confirmInput, document.getElementById('confirmError'), 'As senhas não coincidem');
+            return setFieldState(confirmInput, document.getElementById('confirmError'), '');
+        }
+
+        // ── Submit ─────────────────────────────────────────────────────────────
+        form.addEventListener('submit', async (e) =>
+        {
+            e.preventDefault();
+            alertError.style.display   = 'none';
+            alertSuccess.style.display = 'none';
+
+            const ok = validateName() & validateEmail() & validatePassword() & validateConfirm();
+            if (!ok) return;
+
+            submitBtn.disabled    = true;
+            submitBtn.textContent = 'Criando conta…';
+
+            try
+            {
+                const res = await fetch(`${API}/users/register`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                        name:     nameInput.value.trim(),
+                        email:    emailInput.value.trim(),
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok)
+                {
+                    // Erros de validação do backend (campos)
+                    if (data.errors)
+                    {
+                        Object.entries(data.errors).forEach(([field, msg]) =>
+                        {
+                            const input = document.getElementById(field);
+                            const err   = document.getElementById(field + 'Error');
+                            if (input && err) setFieldState(input, err, msg);
+                        });
+                    }
+                    else
+                    {
+                        alertError.textContent   = data.message || 'Erro ao criar conta';
+                        alertError.style.display = 'block';
+                    }
+                    return;
+                }
+
+                // Salva o token e redireciona
+                localStorage.setItem('nump_token', data.token);
+                localStorage.setItem('nump_user',  JSON.stringify(data.user));
+
+                alertSuccess.textContent   = 'Conta criada! Redirecionando…';
+                alertSuccess.style.display = 'block';
+
+                setTimeout(() => window.location.href = 'index.html', 1500);
+            }
+            catch (err)
+            {
+                alertError.textContent   = 'Não foi possível conectar ao servidor.';
+                alertError.style.display = 'block';
+            }
+            finally
+            {
+                submitBtn.disabled    = false;
+                submitBtn.textContent = 'Criar conta';
+            }
+        });
+    </script>
+
+</body>
+</html>

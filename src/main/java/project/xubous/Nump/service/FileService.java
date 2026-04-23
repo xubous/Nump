@@ -6,7 +6,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import project.xubous.Nump.model.File;
@@ -28,12 +31,12 @@ public class FileService
 
     public List < File > getAllFile ( )
     {
-        return fileRepository.findAll ( );
+        return fileRepository.findAllByOwnerEmail ( getCurrentUserEmail ( ) );
     }
 
     public Optional < File > getFileById ( Long id )
     {
-        return fileRepository.findById ( id );
+        return fileRepository.findByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) );
     }
 
     public File uploadAndCompress ( MultipartFile multipartFile ) throws IOException
@@ -49,6 +52,7 @@ public class FileService
         file.setSize        ( Files.size ( zipPath ) );
         file.setToken       ( token );
         file.setDownloadUrl ( downloadUrl );
+        file.setOwnerEmail  ( getCurrentUserEmail ( ) );
 
         return fileRepository.save ( file );
     }
@@ -63,8 +67,18 @@ public class FileService
         return Files.readAllBytes ( Path.of ( path ) );
     }
 
+    @Transactional
     public void deleteFile ( long id )
     {
-        fileRepository.deleteById ( id );
+        if ( fileRepository.existsByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) ) )
+        {
+            fileRepository.deleteByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) );
+        }
+    }
+
+    private String getCurrentUserEmail ( )
+    {
+        Authentication auth = SecurityContextHolder.getContext ( ).getAuthentication ( );
+        return auth == null ? "" : auth.getName ( );
     }
 }

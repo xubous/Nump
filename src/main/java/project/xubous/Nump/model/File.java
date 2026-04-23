@@ -1,5 +1,6 @@
 package project.xubous.Nump.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,4 +27,7 @@ public class File
     private long size;
     private String token;
     private String downloadUrl;
+
+    @Column(nullable = false)
+    private String ownerEmail;
 }

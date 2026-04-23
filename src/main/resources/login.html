@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Nump</title>
+    <link rel="stylesheet" href="login.css">
+    <style>
+        * { font-family: Arial, sans-serif; }
+        .input-group .error-msg {
+            color: #f87171;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        .input-group input.invalid {
+            border-color: #f87171;
+            box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.1);
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.error   { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+        .alert.success { background: rgba(52,211,153,0.1);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .password-wrapper { position: relative; }
+        .toggle-pw {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.5;
+            background: none;
+            border: none;
+            color: inherit;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-box">
+        <a href="index.html" class="login-logo">Nump</a>
+        <h2>Bem-vindo de volta</h2>
+        <p>Acesse sua conta para gerenciar seus arquivos</p>
+
+        <div class="alert error"   id="alertError"></div>
+        <div class="alert success" id="alertSuccess"></div>
+
+        <form id="loginForm" novalidate>
+
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" placeholder="exemplo@nump.com" autocomplete="email">
+                <span class="error-msg" id="emailError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" class="toggle-pw" id="togglePw" aria-label="Mostrar senha">Mostrar</button>
+                </div>
+                <span class="error-msg" id="passwordError"></span>
+            </div>
+
+            <div class="options">
+                <label><input type="checkbox" id="remember"> Lembrar-me</label>
+                <a href="#">Esqueceu a senha?</a>
+            </div>
+
+            <button type="submit" class="login-btn" id="submitBtn">Entrar</button>
+
+        </form>
+
+        <p class="register">Novo por aqui? <a href="register.html">Criar conta agora</a></p>
+    </div>
+
+    <script>
+        const API = 'http://localhost:8080';
+
+        const form          = document.getElementById('loginForm');
+        const emailInput    = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitBtn     = document.getElementById('submitBtn');
+        const alertError    = document.getElementById('alertError');
+        const alertSuccess  = document.getElementById('alertSuccess');
+
+        // Mostrar/ocultar senha
+        document.getElementById('togglePw').addEventListener('click', () => {
+            passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+        });
+
+        // Preenche email se "lembrar-me" foi marcado antes
+        const savedEmail = localStorage.getItem('nump_remember_email');
+        if (savedEmail)
+        {
+            emailInput.value = savedEmail;
+            document.getElementById('remember').checked = true;
+        }
+
+        form.addEventListener('submit', async (e) =>
+        {
+            e.preventDefault();
+            alertError.style.display   = 'none';
+            alertSuccess.style.display = 'none';
+
+            const email    = emailInput.value.trim();
+            const password = passwordInput.value;
+            let valid      = true;
+
+            // Validação básica client-side
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+            {
+                emailInput.classList.add('invalid');
+                document.getElementById('emailError').textContent   = 'Email inválido';
+                document.getElementById('emailError').style.display = 'block';
+                valid = false;
+            }
+            else
+            {
+                emailInput.classList.remove('invalid');
+                document.getElementById('emailError').style.display = 'none';
+            }
+
+            if (!password)
+            {
+                passwordInput.classList.add('invalid');
+                document.getElementById('passwordError').textContent   = 'Senha é obrigatória';
+                document.getElementById('passwordError').style.display = 'block';
+                valid = false;
+            }
+            else
+            {
+                passwordInput.classList.remove('invalid');
+                document.getElementById('passwordError').style.display = 'none';
+            }
+
+            if (!valid) return;
+
+            submitBtn.disabled    = true;
+            submitBtn.textContent = 'Entrando…';
+
+            try
+            {
+                const res  = await fetch(`${API}/users/login`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok)
+                {
+                    alertError.textContent   = data.message || 'Email ou senha incorretos';
+                    alertError.style.display = 'block';
+                    return;
+                }
+
+                // Salva token e usuário
+                localStorage.setItem('nump_token', data.token);
+                localStorage.setItem('nump_user',  JSON.stringify(data.user));
+
+                if (document.getElementById('remember').checked)
+                    localStorage.setItem('nump_remember_email', email);
+                else
+                    localStorage.removeItem('nump_remember_email');
+
+                alertSuccess.textContent   = 'Login realizado! Redirecionando…';
+                alertSuccess.style.display = 'block';
+
+                setTimeout(() => window.location.href = 'index.html', 1000);
+            }
+            catch (err)
+            {
+                alertError.textContent   = 'Não foi possível conectar ao servidor.';
+                alertError.style.display = 'block';
+            }
+            finally
+            {
+                submitBtn.disabled    = false;
+                submitBtn.textContent = 'Entrar';
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+# ── Servidor ──────────────────────────────────────────────────────────────────
+server.port=8080
+
+# ── Banco de dados (ajuste para o seu banco em produção) ──────────────────────
+spring.datasource.url=jdbc:postgresql://localhost:5432/nump
+spring.datasource.username=postgres
+spring.datasource.password=sua_senha_aqui
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+# ── Upload ────────────────────────────────────────────────────────────────────
+spring.servlet.multipart.max-file-size=100MB
+spring.servlet.multipart.max-request-size=100MB
+
+# ── JWT ───────────────────────────────────────────────────────────────────────
+# IMPORTANTE: troque por uma string longa e aleatória em produção (mínimo 32 chars)
+jwt.secret=troque-por-uma-chave-secreta-longa-e-aleatoria-aqui
+jwt.expiration-ms=86400000
+
+# ── URL base (usada para gerar links de download) ─────────────────────────────
+# Em produção: app.base-url=https://seu-dominio.com
+app.base-url=http://localhost:8080
