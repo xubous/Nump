@@ -44,13 +44,18 @@ public class SecurityConfig
             .cors(cors -> cors.configurationSource(corsConfig()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Rotas públicas
+                // ✅ Arquivos estáticos — ADICIONE ESSAS LINHAS AQUI
+                .requestMatchers(
+                    "/", "/index.html", "/login.html", "/register.html",
+                    "/*.css", "/*.js", "/*.png", "/*.ico"
+                ).permitAll()
+                // Rotas públicas (já existia)
                 .requestMatchers(HttpMethod.POST, "/users/register", "/users/login").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/files/r/**").permitAll()
-                // Apenas ADMIN gerencia usuários
+                // Apenas ADMIN (já existia)
                 .requestMatchers(HttpMethod.GET,    "/users").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
-                // Todo usuário autenticado pode usar arquivos
+                // Todo autenticado (já existia)
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

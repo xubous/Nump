@@ -267,7 +267,8 @@ body.light .file-card{background:#f9fafb}
 <footer class="footer">© 2026 Nump. Simplicidade em cada bit.</footer>
 
 <script>
-const BASE_URL = "http://localhost:8080";
+// ✅ URL vazia = usa o mesmo domínio (funciona local e no Render)
+const BASE_URL = "";
 
 const fileInput    = document.getElementById("fileInput");
 const dropArea     = document.getElementById("drop-area");
@@ -279,7 +280,6 @@ const btnClear     = document.getElementById("btn-clear");
 const authSection  = document.getElementById("auth-section");
 const themeToggle  = document.getElementById("theme-toggle");
 
-// Fila de arquivos pendentes: [{file, li, progressBar, statusEl}]
 let queue = [];
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -319,7 +319,7 @@ function logout() {
 
 // ── DRAG & DROP ───────────────────────────────────────────────────────────────
 dropArea.addEventListener("click", e => {
-  if (e.target.closest("button")) return; // não abre o seletor ao clicar nos botões
+  if (e.target.closest("button")) return;
   fileInput.click();
 });
 
@@ -336,7 +336,6 @@ dropArea.addEventListener("drop", e => {
 // ── FILA LOCAL ────────────────────────────────────────────────────────────────
 function enqueueFiles(files) {
   [...files].forEach(file => {
-    // Evita duplicatas pelo nome+tamanho
     if (queue.some(q => q.file.name === file.name && q.file.size === file.size)) return;
 
     const li = document.createElement("li");
@@ -388,7 +387,6 @@ btnSend.onclick = async () => {
       setStatus(item, "done", "Concluído");
       item.progressBar.style.width = "100%";
 
-      // Remove da lista de pendentes e adiciona nos downloads
       setTimeout(() => {
         item.li.remove();
         queue = queue.filter(q => q !== item);
@@ -413,7 +411,6 @@ function setStatus(item, cls, label) {
   item.statusEl.textContent = label;
 }
 
-// Upload com progresso via XHR
 function uploadWithProgress(file, token, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr  = new XMLHttpRequest();

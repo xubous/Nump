@@ -116,9 +116,9 @@
     </div>
 
     <script>
-        const API = 'http://localhost:8080';
+        // ✅ URL vazia = usa o mesmo domínio (funciona local e no Render)
+        const API = '';
 
-        // ── Elementos ──────────────────────────────────────────────────────────
         const form          = document.getElementById('registerForm');
         const nameInput     = document.getElementById('name');
         const emailInput    = document.getElementById('email');
@@ -129,7 +129,6 @@
         const alertSuccess  = document.getElementById('alertSuccess');
         const strengthBar   = document.getElementById('strengthBar');
 
-        // ── Mostrar/ocultar senha ──────────────────────────────────────────────
         document.getElementById('togglePw').addEventListener('click', () => toggleVisibility(passwordInput));
         document.getElementById('toggleConfirm').addEventListener('click', () => toggleVisibility(confirmInput));
 
@@ -138,7 +137,6 @@
             input.type = input.type === 'password' ? 'text' : 'password';
         }
 
-        // ── Indicador de força da senha ────────────────────────────────────────
         passwordInput.addEventListener('input', () =>
         {
             const pw  = passwordInput.value;
@@ -155,7 +153,6 @@
             strengthBar.style.background = colors[Math.max(0, score - 1)] || 'transparent';
         });
 
-        // ── Validação em tempo real ────────────────────────────────────────────
         nameInput.addEventListener('blur',     () => validateName());
         emailInput.addEventListener('blur',    () => validateEmail());
         passwordInput.addEventListener('blur', () => validatePassword());
@@ -180,7 +177,7 @@
         function validateName()
         {
             const v = nameInput.value.trim();
-            if (!v)          return setFieldState(nameInput, document.getElementById('nameError'), 'Nome é obrigatório');
+            if (!v)           return setFieldState(nameInput, document.getElementById('nameError'), 'Nome é obrigatório');
             if (v.length < 2) return setFieldState(nameInput, document.getElementById('nameError'), 'Mínimo 2 caracteres');
             return setFieldState(nameInput, document.getElementById('nameError'), '');
         }
@@ -197,7 +194,7 @@
         function validatePassword()
         {
             const v = passwordInput.value;
-            if (!v)          return setFieldState(passwordInput, document.getElementById('passwordError'), 'Senha é obrigatória');
+            if (!v)           return setFieldState(passwordInput, document.getElementById('passwordError'), 'Senha é obrigatória');
             if (v.length < 6) return setFieldState(passwordInput, document.getElementById('passwordError'), 'Mínimo 6 caracteres');
             return setFieldState(passwordInput, document.getElementById('passwordError'), '');
         }
@@ -210,7 +207,6 @@
             return setFieldState(confirmInput, document.getElementById('confirmError'), '');
         }
 
-        // ── Submit ─────────────────────────────────────────────────────────────
         form.addEventListener('submit', async (e) =>
         {
             e.preventDefault();
@@ -239,7 +235,6 @@
 
                 if (!res.ok)
                 {
-                    // Erros de validação do backend (campos)
                     if (data.errors)
                     {
                         Object.entries(data.errors).forEach(([field, msg]) =>
@@ -257,7 +252,6 @@
                     return;
                 }
 
-                // Salva o token e redireciona
                 localStorage.setItem('nump_token', data.token);
                 localStorage.setItem('nump_user',  JSON.stringify(data.user));
 

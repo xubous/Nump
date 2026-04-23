@@ -85,7 +85,8 @@
     </div>
 
     <script>
-        const API = 'http://localhost:8080';
+        // ✅ URL vazia = usa o mesmo domínio (funciona local e no Render)
+        const API = '';
 
         const form          = document.getElementById('loginForm');
         const emailInput    = document.getElementById('email');
@@ -94,12 +95,10 @@
         const alertError    = document.getElementById('alertError');
         const alertSuccess  = document.getElementById('alertSuccess');
 
-        // Mostrar/ocultar senha
         document.getElementById('togglePw').addEventListener('click', () => {
             passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
         });
 
-        // Preenche email se "lembrar-me" foi marcado antes
         const savedEmail = localStorage.getItem('nump_remember_email');
         if (savedEmail)
         {
@@ -117,7 +116,6 @@
             const password = passwordInput.value;
             let valid      = true;
 
-            // Validação básica client-side
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
             {
                 emailInput.classList.add('invalid');
@@ -166,7 +164,6 @@
                     return;
                 }
 
-                // Salva token e usuário
                 localStorage.setItem('nump_token', data.token);
                 localStorage.setItem('nump_user',  JSON.stringify(data.user));
 
