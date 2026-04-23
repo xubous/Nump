@@ -85,8 +85,10 @@ public class SecurityConfig
     public CorsConfigurationSource corsConfig()
     {
         var config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-            "*"
+        config.setAllowedOrigins(List.of(
+            "https://nump-six.vercel.app",
+            "http://localhost:5500",
+            "http://localhost:3000"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
