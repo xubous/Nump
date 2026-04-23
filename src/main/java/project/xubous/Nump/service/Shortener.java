@@ -2,12 +2,14 @@ package project.xubous.Nump.service;
 
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class Shortener
 {
-    private final String baseUrl = "http://localhost:8080/files/r/";
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
 
     public String generateToken ( )
     {
@@ -16,6 +18,6 @@ public class Shortener
 
     public String generateDownloadUrl ( String token )
     {
-        return baseUrl + token;
+        return baseUrl + "/files/r/" + token;
     }
 }
