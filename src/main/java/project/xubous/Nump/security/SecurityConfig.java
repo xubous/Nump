@@ -86,7 +86,7 @@ public class SecurityConfig
     {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
-            "https://nump-six.vercel.app",
+            "https://numpfm.vercel.app",
             "http://localhost:5500",
             "http://localhost:3000"
         ));
