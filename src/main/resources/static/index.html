@@ -26,7 +26,7 @@
   --radius-lg:24px;
 }
 
-body{font-family:"Inter",sans-serif;background:linear-gradient(160deg,#070c20 0%,#0a0f24 60%,#060b1d 100%);color:var(--text);min-height:100vh}
+body{font-family:"Inter","Noto Color Emoji","Segoe UI Emoji",sans-serif;background:linear-gradient(160deg,#070c20 0%,#0a0f24 60%,#060b1d 100%);color:var(--text);min-height:100vh}
 a{color:inherit;text-decoration:none}
 ul{list-style:none}
 button{font-family:inherit}
@@ -46,7 +46,7 @@ button{font-family:inherit}
 .btn-nav:hover{opacity:.85;transform:translateY(-1px)}
 .btn-nav.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn-nav.ghost:hover{border-color:var(--accent);background:var(--accent-dim)}
-#theme-toggle{width:26px;cursor:pointer;opacity:.7;transition:.2s}
+#theme-toggle{width:42px;height:42px;border:none;border-radius:12px;cursor:pointer;opacity:.9;transition:.2s;background:rgba(255,255,255,.05);color:var(--text)}
 #theme-toggle:hover{opacity:1}
 
 /* ── MAIN ─────────────────────────────────────────────────────── */
@@ -54,7 +54,7 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 
 /* ── HERO ─────────────────────────────────────────────────────── */
 .hero{text-align:center;margin-bottom:56px}
-.hero h1{font-size:clamp(3rem,7vw,5.5rem);line-height:1;font-weight:800;letter-spacing:-.03em;background:linear-gradient(100deg,#7c8bff 0%,#d55be8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero h1{font-size:clamp(3rem,7vw,5.5rem);line-height:1;font-weight:800;letter-spacing:-.03em;background:linear-gradient(100deg,#7c8bff 0%,#d55be8 100%);}
 .hero p{margin-top:18px;color:var(--muted);font-size:1.15rem}
 
 /* ── GRID ─────────────────────────────────────────────────────── */
@@ -204,6 +204,7 @@ body.light .file-card{background:#f9fafb}
   .hero h1{font-size:2.8rem}
 }
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
 
@@ -212,7 +213,7 @@ body.light .file-card{background:#f9fafb}
     <a href="#" class="logo"><span class="logo-star">★</span><span>Nump</span></a>
     <div class="actions">
       <div id="auth-section"></div>
-      <img id="theme-toggle" src="https://img.icons8.com/plumpy/30/crescent-moon.png" alt="Tema">
+      <button id="theme-toggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
     </div>
   </div>
 </header>
@@ -228,7 +229,7 @@ body.light .file-card{background:#f9fafb}
     <!-- UPLOAD -->
     <div class="panel upload-box" id="drop-area">
       <input type="file" id="fileInput" hidden multiple>
-      <span class="upload-icon">📂</span>
+      <span class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
       <h3>Envie seus arquivos</h3>
       <p>Arraste para cá ou <span>clique para selecionar</span></p>
 
@@ -249,7 +250,7 @@ body.light .file-card{background:#f9fafb}
       <p class="sub">Baixe ou copie o link dos seus uploads.</p>
       <ul id="file-list">
         <li class="empty-state">
-          <span class="empty-icon">📭</span>
+          <span class="empty-icon"><i class="fa-regular fa-folder-open"></i></span>
           <p>Nenhum arquivo enviado ainda.<br>Arraste um arquivo para começar.</p>
         </li>
       </ul>
@@ -258,9 +259,9 @@ body.light .file-card{background:#f9fafb}
   </section>
 
   <section class="features">
-    <div class="feature-card"><span class="f-icon">⚡</span><h3>Velocidade</h3><p>Uploads ultra-rápidos otimizados para qualquer conexão.</p></div>
-    <div class="feature-card"><span class="f-icon">🗂️</span><h3>Organização</h3><p>Gerencie seus arquivos com facilidade e encontre tudo rapidamente.</p></div>
-    <div class="feature-card"><span class="f-icon">📱</span><h3>Compartilhamento</h3><p>Compartilhe links diretos de forma simples e instantânea.</p></div>
+    <div class="feature-card"><span class="f-icon"><i class="fa-solid fa-bolt"></i></span><h3>Velocidade</h3><p>Uploads ultra-rápidos otimizados para qualquer conexão.</p></div>
+    <div class="feature-card"><span class="f-icon"><i class="fa-solid fa-folder-tree"></i></span><h3>Organização</h3><p>Gerencie seus arquivos com facilidade e encontre tudo rapidamente.</p></div>
+    <div class="feature-card"><span class="f-icon"><i class="fa-solid fa-share-nodes"></i></span><h3>Compartilhamento</h3><p>Compartilhe links diretos de forma simples e instantânea.</p></div>
   </section>
 </main>
 
@@ -291,9 +292,9 @@ window.addEventListener("DOMContentLoaded", () => {
 // ── TEMA ──────────────────────────────────────────────────────────────────────
 themeToggle.onclick = () => {
   document.body.classList.toggle("light");
-  themeToggle.src = document.body.classList.contains("light")
-    ? "https://img.icons8.com/external-tanah-basah-glyph-tanah-basah/48/external-sun-summer-tanah-basah-glyph-tanah-basah.png"
-    : "https://img.icons8.com/plumpy/48/crescent-moon.png";
+  themeToggle.innerHTML = document.body.classList.contains("light")
+    ? '<i class="fa-solid fa-sun"></i>'
+    : '<i class="fa-solid fa-moon"></i>';
 };
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -437,17 +438,17 @@ function uploadWithProgress(file, token, onProgress) {
 async function loadFiles() {
   const token = localStorage.getItem("nump_token");
   if (!token) {
-    fileList.innerHTML = `<li class="empty-state"><span class="empty-icon">🔐</span><p>Faça login para ver seus arquivos.</p></li>`;
+    fileList.innerHTML = `<li class="empty-state"><span class="empty-icon"><i class="fa-solid fa-lock"></i></span><p>Faça login para ver seus arquivos.</p></li>`;
     return;
   }
 
   try {
     const res   = await fetch(`${BASE_URL}/files`, { headers: { Authorization: "Bearer " + token } });
-    if (!res.ok) { fileList.innerHTML = `<li class="empty-state"><span class="empty-icon">⚠️</span><p>Erro ao carregar arquivos.</p></li>`; return; }
+    if (!res.ok) { fileList.innerHTML = `<li class="empty-state"><span class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></span><p>Erro ao carregar arquivos.</p></li>`; return; }
     const files = await res.json();
 
     if (!files.length) {
-      fileList.innerHTML = `<li class="empty-state"><span class="empty-icon">📭</span><p>Nenhum arquivo enviado ainda.<br>Arraste um arquivo para começar.</p></li>`;
+      fileList.innerHTML = `<li class="empty-state"><span class="empty-icon"><i class="fa-regular fa-folder-open"></i></span><p>Nenhum arquivo enviado ainda.<br>Arraste um arquivo para começar.</p></li>`;
       return;
     }
 
@@ -455,7 +456,7 @@ async function loadFiles() {
     files.forEach(f => fileList.appendChild(buildFileCard(f)));
 
   } catch {
-    fileList.innerHTML = `<li class="empty-state"><span class="empty-icon">❌</span><p>Falha na conexão.</p></li>`;
+    fileList.innerHTML = `<li class="empty-state"><span class="empty-icon"><i class="fa-solid fa-circle-xmark"></i></span><p>Falha na conexão.</p></li>`;
   }
 }
 
@@ -508,7 +509,7 @@ async function deleteFile(id, el) {
     setTimeout(() => {
       el.remove();
       if (!fileList.querySelector(".file-card"))
-        fileList.innerHTML = `<li class="empty-state"><span class="empty-icon">📭</span><p>Nenhum arquivo enviado ainda.</p></li>`;
+        fileList.innerHTML = `<li class="empty-state"><span class="empty-icon"><i class="fa-regular fa-folder-open"></i></span><p>Nenhum arquivo enviado ainda.</p></li>`;
     }, 300);
   }
 }
@@ -523,8 +524,45 @@ function formatSize(bytes) {
 
 function fileEmoji(name) {
   const ext = name.split(".").pop().toLowerCase();
-  const map = { pdf:"📄", zip:"🗜️", rar:"🗜️", "7z":"🗜️", jpg:"🖼️", jpeg:"🖼️", png:"🖼️", gif:"🖼️", webp:"🖼️", mp4:"🎬", mov:"🎬", avi:"🎬", mp3:"🎵", wav:"🎵", doc:"📝", docx:"📝", xls:"📊", xlsx:"📊", ppt:"📋", pptx:"📋", txt:"📃", js:"💻", ts:"💻", py:"💻", html:"💻", css:"💻" };
-  return map[ext] || "📁";
+
+  const map = {
+    pdf: '<i class="fa-regular fa-file-lines"></i>',
+    zip: '🗜️',
+    rar: '🗜️',
+    "7z": '🗜️',
+
+    jpg: '<i class="fa-regular fa-file-image"></i>',
+    jpeg: '<i class="fa-regular fa-file-image"></i>',
+    png: '<i class="fa-regular fa-file-image"></i>',
+    gif: '<i class="fa-regular fa-file-image"></i>',
+    webp: '<i class="fa-regular fa-file-image"></i>',
+
+    mp4: '<i class="fa-solid fa-film"></i>',
+    mov: '<i class="fa-solid fa-film"></i>',
+    avi: '<i class="fa-solid fa-film"></i>',
+
+    mp3: '<i class="fa-solid fa-music"></i>',
+    wav: '<i class="fa-solid fa-music"></i>',
+
+    doc: '<i class="fa-regular fa-file-word"></i>',
+    docx: '<i class="fa-regular fa-file-word"></i>',
+
+    xls: '<i class="fa-regular fa-file-excel"></i>',
+    xlsx: '<i class="fa-regular fa-file-excel"></i>',
+
+    ppt: '<i class="fa-regular fa-file-powerpoint"></i>',
+    pptx: '<i class="fa-regular fa-file-powerpoint"></i>',
+
+    txt: '<i class="fa-regular fa-file-lines"></i>',
+
+    js: '<i class="fa-solid fa-file-code"></i>',
+    ts: '<i class="fa-solid fa-file-code"></i>',
+    py: '<i class="fa-solid fa-file-code"></i>',
+    html: '<i class="fa-solid fa-file-code"></i>',
+    css: '<i class="fa-solid fa-file-code"></i>'
+  };
+
+  return map[ext] || '<i class="fa-regular fa-folder"></i>';
 }
 </script>
 </body>
