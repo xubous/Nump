@@ -19,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import project.xubous.Nump.model.File;
 import project.xubous.Nump.service.FileService;
 
-@CrossOrigin ( origins = "*" )
 @RestController
 @RequestMapping ( "/files" )
 public class FileController
