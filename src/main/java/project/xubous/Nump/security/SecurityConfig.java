@@ -86,8 +86,7 @@ public class SecurityConfig
     {
         var config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
-            "https://*.vercel.app",
-            "http://localhost:*"
+            "*"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
