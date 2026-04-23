@@ -44,6 +44,8 @@ public class SecurityConfig
             .cors(cors -> cors.configurationSource(corsConfig()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // ✅ Libera preflight do CORS
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Rotas públicas
                 .requestMatchers(HttpMethod.POST, "/users/register", "/users/login").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/files/r/**").permitAll()
