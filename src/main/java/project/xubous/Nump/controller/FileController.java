@@ -2,7 +2,6 @@ package project.xubous.Nump.controller;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,11 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
 import project.xubous.Nump.model.File;
 import project.xubous.Nump.service.FileService;
 
-// @CrossOrigin removido — CORS é gerenciado globalmente pelo SecurityConfig
 @RestController
 @RequestMapping ( "/files" )
 public class FileController
