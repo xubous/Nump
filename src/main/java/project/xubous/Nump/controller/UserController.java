@@ -4,13 +4,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import project.xubous.Nump.dto.UserDTO.*;
 import project.xubous.Nump.service.UserService;
-
 import java.util.List;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/users")
 public class UserController
@@ -22,7 +19,7 @@ public class UserController
         this.userService = userService;
     }
 
-    // ── Auth ──────────────────────────────────────────────────────────────────
+    // ── Auth — rotas públicas (liberadas no SecurityConfig) ───────────────────
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req)
@@ -36,7 +33,7 @@ public class UserController
         return ResponseEntity.ok(userService.login(req));
     }
 
-    // ── CRUD (requer autenticação) ────────────────────────────────────────────
+    // ── CRUD — requer autenticação ────────────────────────────────────────────
 
     @GetMapping                          // ADMIN only (ver SecurityConfig)
     public ResponseEntity<List<UserResponse>> getAll()
