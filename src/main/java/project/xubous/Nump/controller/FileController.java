@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import project.xubous.Nump.model.File;
 import project.xubous.Nump.service.FileService;
 
+// @CrossOrigin removido — CORS é gerenciado globalmente pelo SecurityConfig
 @RestController
 @RequestMapping ( "/files" )
 public class FileController
@@ -29,6 +30,7 @@ public class FileController
         this.fileService = fileService;
     }
 
+    // GET /files — FileService já filtra pelo email do usuário autenticado via SecurityContextHolder
     @GetMapping
     public List < File > getAllFile ( )
     {
@@ -43,6 +45,7 @@ public class FileController
                 .orElse ( ResponseEntity.notFound ( ).build ( ) );
     }
 
+    // POST /files/upload — FileService já lê o usuário autenticado via SecurityContextHolder
     @PostMapping ( "/upload" )
     public ResponseEntity < File > uploadFile ( @RequestParam ( "file" ) MultipartFile file ) throws IOException
     {
@@ -50,6 +53,7 @@ public class FileController
         return ResponseEntity.ok ( saved );
     }
 
+    // GET /files/r/{token} — rota pública, liberada no SecurityConfig
     @GetMapping ( "/r/{token}" )
     public ResponseEntity < byte[] > download ( @PathVariable String token ) throws IOException
     {
@@ -74,6 +78,7 @@ public class FileController
                 .orElse ( ResponseEntity.notFound ( ).build ( ) );
     }
 
+    // DELETE /files/{id} — FileService verifica se o arquivo pertence ao usuário antes de deletar
     @DeleteMapping ( "/{id}" )
     public ResponseEntity < Void > deleteFile ( @PathVariable Long id )
     {
