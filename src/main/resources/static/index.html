@@ -54,7 +54,7 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 
 /* ── HERO ─────────────────────────────────────────────────────── */
 .hero{text-align:center;margin-bottom:56px}
-.hero h1{font-size:clamp(3rem,7vw,5.5rem);line-height:1;font-weight:800;letter-spacing:-.03em;background:linear-gradient(100deg,#7c8bff 0%,#d55be8 100%);}
+.hero h1{font-size:clamp(3rem,7vw,5.5rem);line-height:1;font-weight:800;letter-spacing:-.03em;background:linear-gradient(100deg,#7c8bff 0%,#d55be8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero p{margin-top:18px;color:var(--muted);font-size:1.15rem}
 
 /* ── GRID ─────────────────────────────────────────────────────── */
@@ -67,19 +67,42 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 .upload-box{
   min-height:300px;display:flex;flex-direction:column;
   justify-content:center;align-items:center;text-align:center;
-  cursor:pointer;transition:.25s;padding:30px;position:relative;overflow:hidden
+  cursor:pointer;transition:.3s;padding:30px;position:relative;overflow:hidden;
+  background:transparent !important;
+  border:2px dashed rgba(93,108,255,.3) !important;
+  border-radius:var(--radius-lg)
 }
 .upload-box::before{
   content:"";position:absolute;inset:0;border-radius:var(--radius-lg);
-  background:radial-gradient(ellipse at 50% 0%,rgba(93,108,255,.06),transparent 70%);
-  pointer-events:none
+  background:radial-gradient(ellipse at 50% 30%,rgba(93,108,255,.07),transparent 65%);
+  pointer-events:none;transition:.3s
 }
-.upload-box:hover,.upload-box.drag-active{border-color:var(--border-hover);background:rgba(93,108,255,.05)}
+.upload-box:hover{
+  border-color:rgba(93,108,255,.65) !important;
+}
+.upload-box:hover::before{
+  background:radial-gradient(ellipse at 50% 30%,rgba(93,108,255,.14),transparent 65%);
+}
+.upload-box.drag-active{
+  border-color:var(--accent) !important;
+  border-style:solid !important;
+}
+.upload-box.drag-active::before{
+  background:radial-gradient(ellipse at 50% 30%,rgba(93,108,255,.18),transparent 65%);
+}
 .upload-box.drag-active .upload-icon{transform:scale(1.15) translateY(-4px)}
-.upload-icon{font-size:3.2rem;margin-bottom:18px;transition:.3s;display:block}
+.upload-icon{font-size:3.2rem;margin-bottom:18px;transition:.3s;display:block;position:relative}
+.upload-icon::after{
+  content:"";position:absolute;inset:-12px;border-radius:50%;
+  background:radial-gradient(circle,rgba(93,108,255,.18),transparent 70%);
+  filter:blur(8px);pointer-events:none;opacity:0;transition:.3s
+}
+.upload-box:hover .upload-icon::after{opacity:1}
 .upload-box h3{font-size:1.6rem;font-weight:700;margin-bottom:8px}
 .upload-box p{color:var(--muted);font-size:1rem;line-height:1.6}
 .upload-box span{color:var(--accent);font-weight:600}
+
+@keyframes dashMove{to{stroke-dashoffset:-20px}}
 
 /* ── QUEUE (preview antes de enviar) ──────────────────────────── */
 .queue-list{margin-top:18px;display:flex;flex-direction:column;gap:10px;width:100%}
@@ -227,7 +250,7 @@ body.light .file-card{background:#f9fafb}
   <section class="main-grid">
 
     <!-- UPLOAD -->
-    <div class="panel upload-box" id="drop-area">
+    <div class="upload-box" id="drop-area">
       <input type="file" id="fileInput" hidden multiple>
       <span class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
       <h3>Envie seus arquivos</h3>
