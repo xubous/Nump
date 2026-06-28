@@ -176,31 +176,6 @@ Nump/
 
 ---
 
-## ✅ CHECKLIST
-
-```
-[X] Mudar fluxo construtores (rota create)
-[X] yml → docker
-[X] Testar aplicação
-[X] Testar rotas da API
-
-[ ] Corrigir Shortener — generateReducedLink deve receber token, não URL completa
-[ ] Corrigir Link.java — construtor (String url, String description) não inicializa campos
-[ ] Adicionar campo token em File.java
-[ ] Implementar Compactor — compactar arquivo em .zip e salvar em /uploads
-[ ] Implementar FileService.uploadAndCompress — salvar path do .zip no banco e gerar link
-[ ] Implementar rota GET /files/r/{token} — ler .zip do disco e retornar como download
-[ ] Verificar FileRepository — adicionar findByToken se necessário
-[ ] Testar fluxo completo: POST /files/upload → link encurtado → GET /files/r/{token} → download do .zip
-
-[ ] (Futuro) Definir e implementar funcionalidade offline
-[ ] (Futuro) Expiração de links e arquivos
-[ ] (Futuro) Rate limiting para evitar abuso
-[ ] (Futuro) Dashboard de analytics de downloads
-```
-
----
-
 ## 📈 Próximos Passos
 
 1. **Corrigir os bugs** listados acima antes de avançar
