@@ -7,18 +7,23 @@ services:
     depends_on:
       - db
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/nump
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - DATABASE_URL=jdbc:postgresql://db:5432/${DB_NAME}
+      - DATABASE_USER=${DB_USER}
+      - DATABASE_PASS=${DB_PASSWORD}
+      - DATABASE_DRIVER=org.postgresql.Driver
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - JWT_SECRET=${JWT_SECRET}
+      - APP_BASE_URL=${APP_BASE_URL}
+      - H2_CONSOLE_ENABLED=false
 
   db:
     image: postgres:16
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=nump
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
 

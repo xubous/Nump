@@ -4,6 +4,10 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Secrets ###
+.env
+application-prod.properties
+
 ### STS ###
 .apt_generated
 .classpath
@@ -31,3 +35,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Uploads locais ###
+uploads/
