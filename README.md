@@ -175,11 +175,3 @@ Nump/
 | Compactação | `java.util.zip` (ZipOutputStream) |
 
 ---
-
-## 📈 Próximos Passos
-
-1. **Corrigir os bugs** listados acima antes de avançar
-2. **Implementar o `Compactor`** com `ZipOutputStream` do Java
-3. **Implementar o fluxo de upload** — `POST /files/upload` → compacta → salva → retorna link curto
-4. **Implementar o download** — `GET /files/r/{token}` → resolve token → serve o `.zip`
-5. **Definir a funcionalidade offline** — possibilidades: cache local, exportação de pacote, modo sem servidor
