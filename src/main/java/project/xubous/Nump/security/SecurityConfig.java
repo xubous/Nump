@@ -52,6 +52,7 @@ public class SecurityConfig
                 .requestMatchers ( HttpMethod.GET,    "/users" ).hasRole ( "ADMIN" )
                 .requestMatchers ( HttpMethod.DELETE, "/users/**" ).hasRole ( "ADMIN" )
                 // qualquer outra rota exige autenticação
+                .requestMatchers("/actuator/health").permitAll()
                 .anyRequest ().authenticated ()
             )
             .addFilterBefore ( jwtAuthFilter, UsernamePasswordAuthenticationFilter.class );
