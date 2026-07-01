@@ -9,6 +9,8 @@
 
 🔗 **Demo:** [numpfm.vercel.app](https://numpfm.vercel.app) · **API:** [nump-tvat.onrender.com](https://nump-tvat.onrender.com)
 
+> ⚠️ A API roda em instância gratuita do Render e pode levar até ~1 minuto para responder após período de inatividade (cold start).
+
 ---
 
 ## Índice
