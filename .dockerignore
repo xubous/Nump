@@ -1,0 +1,29 @@
+# Não copiar para a imagem — build fica menor, mais rápido e sem segredos
+
+# Build e VCS
+target/
+.git/
+.gitignore
+
+# Segredos e config local (NUNCA dentro da imagem)
+.env
+.env.*
+*.log
+
+# Dados/runtime locais
+data/
+uploads/
+*.mv.db
+*.trace.db
+
+# Docs e metadados do repo
+docs/
+*.md
+AGENTS.md
+
+# Artefatos de teste/deploy
+compose.yaml
+Dockerfile
+.dockerignore
+.vscode/
+.idea/

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nump — Enviar arquivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --text: #f1f5f9;
+      --main: #6366f1;
+      --border: rgba(255, 255, 255, 0.1);
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --muted: #94a3b8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+    .card i.logo { font-size: 2.4rem; color: var(--main); margin-bottom: 12px; }
+    .card h1 { font-size: 1.4rem; margin-bottom: 8px; }
+    .card p.sub { color: var(--muted); font-size: .95rem; margin-bottom: 24px; line-height: 1.5; }
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 28px 16px;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .drop:hover, .drop.drag { border-color: var(--main); background: rgba(99, 102, 241, 0.06); }
+    .drop i { font-size: 2rem; color: var(--main); display: block; margin-bottom: 10px; }
+    .drop span { color: var(--main); font-weight: 600; }
+    .drop small { color: var(--muted); display: block; margin-top: 6px; }
+    .filename { margin: 16px 0 0; color: var(--text); font-weight: 600; word-break: break-all; }
+    button.send {
+      margin-top: 20px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: var(--main);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .2s;
+    }
+    button.send:disabled { opacity: .4; cursor: not-allowed; }
+    .status { margin-top: 16px; font-size: .95rem; min-height: 22px; }
+    .status.ok { color: #4ade80; }
+    .status.err { color: #f87171; }
+    .barra { margin-top: 12px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; display: none; }
+    .barra > div { height: 100%; width: 0; background: var(--main); transition: width .2s; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <i class="fa-solid fa-cloud-arrow-up logo"></i>
+    <h1>Enviar arquivo</h1>
+    <p class="sub">Envie o arquivo solicitado. Ele chega direto para o técnico.</p>
+
+    <div class="drop" id="drop">
+      <i class="fa-solid fa-file-arrow-up"></i>
+      <p>Arraste para cá ou <span>clique para selecionar</span></p>
+      <small>Tamanho máximo: 500 MB</small>
+    </div>
+    <input type="file" id="fileInput" hidden>
+
+    <p class="filename" id="filename"></p>
+
+    <button class="send" id="send" disabled>Enviar</button>
+
+    <div class="barra" id="barra"><div id="progresso"></div></div>
+
+    <p class="status" id="status"></p>
+  </main>
+
+  <script>
+    // token vem do query string: /coleta.html?token=abc123
+    const token = new URLSearchParams(location.search).get("token");
+
+    const drop     = document.getElementById("drop");
+    const fileInput= document.getElementById("fileInput");
+    const sendBtn  = document.getElementById("send");
+    const statusEl = document.getElementById("status");
+    const nomeEl   = document.getElementById("filename");
+    const barra    = document.getElementById("barra");
+    const progresso= document.getElementById("progresso");
+
+    let selecionado = null;
+
+    if (!token) {
+      statusEl.textContent = "Link inválido: falta o token.";
+      statusEl.className = "status err";
+    }
+
+    drop.onclick = () => fileInput.click();
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add("drag"); };
+    drop.ondragleave = () => drop.classList.remove("drag");
+    drop.ondrop = e => {
+      e.preventDefault();
+      drop.classList.remove("drag");
+      if (e.dataTransfer.files.length) selecionar(e.dataTransfer.files[0]);
+    };
+    fileInput.onchange = () => { if (fileInput.files.length) selecionar(fileInput.files[0]); };
+
+    function selecionar(f) {
+      selecionado = f;
+      nomeEl.textContent = f.name + " (" + formatSize(f.size) + ")";
+      sendBtn.disabled = false;
+      statusEl.textContent = "";
+      statusEl.className = "status";
+    }
+
+    sendBtn.onclick = () => {
+      if (!selecionado || !token) return;
+
+      sendBtn.disabled = true;
+      statusEl.textContent = "Enviando…";
+      statusEl.className = "status";
+      barra.style.display = "block";
+
+      const fd = new FormData();
+      fd.append("file", selecionado);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `/files/c/${token}`);
+
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) progresso.style.width = (e.loaded / e.total * 100) + "%";
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          statusEl.textContent = "Arquivo enviado com sucesso!";
+          statusEl.className = "status ok";
+          progresso.style.width = "100%";
+          drop.style.display = "none";
+          sendBtn.style.display = "none";
+        } else {
+          let msg = "Falha ao enviar o arquivo.";
+          try { msg = JSON.parse(xhr.responseText).message || msg; } catch (e) {}
+          statusEl.textContent = msg;
+          statusEl.className = "status err";
+          sendBtn.disabled = false;
+          barra.style.display = "none";
+        }
+      };
+
+      xhr.onerror = () => {
+        statusEl.textContent = "Erro de conexão. Tente novamente.";
+        statusEl.className = "status err";
+        sendBtn.disabled = false;
+        barra.style.display = "none";
+      };
+
+      xhr.send(fd);
+    };
+
+    function formatSize(b) {
+      if (b < 1024) return b + " B";
+      if (b < 1048576) return (b/1024).toFixed(1) + " KB";
+      if (b < 1073741824) return (b/1048576).toFixed(1) + " MB";
+      return (b/1073741824).toFixed(2) + " GB";
+    }
+  </script>
+</body>
+</html>

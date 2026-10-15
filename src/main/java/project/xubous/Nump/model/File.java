@@ -1,7 +1,11 @@
 package project.xubous.Nump.model;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,4 +34,18 @@ public class File
 
     @Column(nullable = false)
     private String ownerEmail;
+
+    // ── Controle do link (arquivo temporário) ─────────────────────────────────
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;      // null = sem expiração (linhas antigas)
+    private Integer maxDownloads;         // null = sem limite de downloads
+    private long downloadCount;
+    private boolean revoked;
+
+    // ── Metadados ─────────────────────────────────────────────────────────────
+    private String originalName;
+    private String description;
+
+    @Enumerated ( EnumType.STRING )
+    private OrigemArquivo origem = OrigemArquivo.UPLOAD;
 }

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nump — Autorizar acesso remoto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --text: #f1f5f9;
+      --main: #6366f1;
+      --border: rgba(255, 255, 255, 0.1);
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --muted: #94a3b8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 460px;
+      width: 100%;
+      text-align: center;
+    }
+    .card i.logo { font-size: 2.4rem; color: var(--main); margin-bottom: 12px; }
+    .card h1 { font-size: 1.4rem; margin-bottom: 8px; }
+    .card p.sub { color: var(--muted); font-size: .95rem; margin-bottom: 20px; line-height: 1.5; }
+    .aviso {
+      text-align: left;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: .88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .aviso i { color: var(--main); margin-right: 6px; }
+    label { display: block; text-align: left; font-size: .85rem; color: var(--muted); margin-bottom: 6px; }
+    input[type=email] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,.02);
+      color: var(--text);
+      font-size: .95rem;
+      margin-bottom: 18px;
+    }
+    input[type=email]:focus { outline: none; border-color: var(--main); }
+    button.auth {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: var(--main);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .2s;
+    }
+    button.auth:hover { filter: brightness(1.1); }
+    button.auth:disabled { opacity: .4; cursor: not-allowed; }
+    .status { margin-top: 16px; font-size: .95rem; min-height: 22px; }
+    .status.ok { color: #4ade80; }
+    .status.err { color: #f87171; }
+    .sessao {
+      display: none;
+      text-align: left;
+      margin-top: 20px;
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .sessao h3 { font-size: .95rem; color: #4ade80; margin-bottom: 10px; }
+    .sessao .linha { font-size: .9rem; margin: 6px 0; word-break: break-all; }
+    .sessao .linha b { color: var(--text); }
+    .sessao .muted { color: var(--muted); font-size: .85rem; }
+    .copiar {
+      margin-top: 10px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      font-size: .85rem;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .copiar:hover { border-color: var(--main); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <i class="fa-solid fa-desktop logo"></i>
+    <h1>Autorizar acesso remoto</h1>
+    <p class="sub">Um técnico solicitou acesso remoto ao seu computador para resolver um problema.</p>
+
+    <div class="aviso">
+      <i class="fa-solid fa-shield-halved"></i>
+      Ao autorizar, você concorda que o técnico possa acessar esta máquina nesta sessão.
+      O acesso é <b>temporário</b> e fica registrado (data, hora e endereço IP) para sua segurança.
+    </div>
+
+    <div id="form-area">
+      <label for="email">Seu e-mail (opcional, para identificação)</label>
+      <input type="email" id="email" placeholder="cliente@email.com">
+
+      <button class="auth" id="authBtn">Autorizo o acesso remoto</button>
+    </div>
+
+    <p class="status" id="status"></p>
+
+    <div class="sessao" id="sessao">
+      <h3><i class="fa-solid fa-circle-check"></i> Acesso autorizado</h3>
+      <div class="linha muted">Guarde os dados abaixo para conectar:</div>
+      <div id="dados-sessao"></div>
+      <button class="copiar" id="copiarBtn" style="display:none">Copiar dados</button>
+    </div>
+  </main>
+
+  <script>
+    // token vem do query string: /consentimento.html?token=abc123
+    const token = new URLSearchParams(location.search).get("token");
+
+    const authBtn   = document.getElementById("authBtn");
+    const statusEl  = document.getElementById("status");
+    const sessaoEl  = document.getElementById("sessao");
+    const dadosEl   = document.getElementById("dados-sessao");
+    const copiarBtn = document.getElementById("copiarBtn");
+    const formArea  = document.getElementById("form-area");
+    const emailEl   = document.getElementById("email");
+
+    let dadosParaCopiar = "";
+
+    if (!token) {
+      statusEl.textContent = "Link inválido: falta o token.";
+      statusEl.className = "status err";
+      authBtn.disabled = true;
+    }
+
+    authBtn.onclick = () => {
+      if (!token) return;
+
+      authBtn.disabled = true;
+      statusEl.textContent = "Registrando autorização…";
+      statusEl.className = "status";
+
+      fetch(`/acessos/${token}/consentir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clienteEmail: emailEl.value || null })
+      })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Não foi possível registrar a autorização.");
+        return data;
+      })
+      .then(data => {
+        formArea.style.display = "none";
+        statusEl.textContent = "";
+        sessaoEl.style.display = "block";
+        montarDados(data);
+      })
+      .catch(err => {
+        statusEl.textContent = err.message;
+        statusEl.className = "status err";
+        authBtn.disabled = false;
+      });
+    };
+
+    // Mostra o que o n8n devolveu (ID/senha do AnyDesk, etc.) ou um aviso genérico
+    function montarDados(data) {
+      const n8n = data.n8n;
+      let html = "";
+      dadosParaCopiar = "";
+
+      if (n8n) {
+        // campos comuns que o n8n pode devolver
+        const id    = n8n.anydeskId    || n8n.anydesk_id    || n8n.id    || n8n.sessionId;
+        const senha = n8n.anydeskSenha || n8n.anydesk_senha || n8n.senha || n8n.password;
+        const link  = n8n.anydeskUrl   || n8n.anydesk_url   || n8n.url;
+
+        if (id)    { html += linha("ID do AnyDesk", id);    dadosParaCopiar += "ID: " + id + "\n"; }
+        if (senha) { html += linha("Senha", senha);          dadosParaCopiar += "Senha: " + senha + "\n"; }
+        if (link)  { html += linha("Link", link);            dadosParaCopiar += "Link: " + link + "\n"; }
+
+        // se veio algo que não reconhecemos, mostra o JSON cru
+        if (!id && !senha && !link) {
+          html += `<div class="linha muted">Detalhes técnicos:</div>
+                   <div class="linha" style="font-family:monospace;font-size:.8rem">${escapeHtml(JSON.stringify(n8n))}</div>`;
+        }
+      }
+
+      if (!html) {
+        html = `<div class="linha muted">Autorização registrada. O técnico já foi avisado e
+                 deve entrar em contato em instantes.</div>`;
+      }
+
+      dadosEl.innerHTML = html;
+      copiarBtn.style.display = dadosParaCopiar ? "inline-block" : "none";
+    }
+
+    function linha(rotulo, valor) {
+      return `<div class="linha"><b>${escapeHtml(rotulo)}:</b> ${escapeHtml(String(valor))}</div>`;
+    }
+
+    function escapeHtml(t) {
+      return String(t).replace(/[&<>"']/g, c =>
+        ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    }
+
+    copiarBtn.onclick = async function() {
+      await navigator.clipboard.writeText(dadosParaCopiar);
+      this.textContent = "Copiado!";
+      setTimeout(() => { this.textContent = "Copiar dados"; }, 2000);
+    };
+  </script>
+</body>
+</html>

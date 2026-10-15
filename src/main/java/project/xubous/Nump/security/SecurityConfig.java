@@ -47,7 +47,19 @@ public class SecurityConfig
                 .requestMatchers ( HttpMethod.OPTIONS, "/**" ).permitAll ()
                 // rotas públicas
                 .requestMatchers ( HttpMethod.POST, "/users/register", "/users/login" ).permitAll ()
+                // frontend estático (shell público — a API continua protegida pelo JWT).
+                // Arquivos são todos na raiz: index/login/register + css.
+                .requestMatchers ( HttpMethod.GET, "/", "/index.html", "/login.html", "/register.html",
+                        "/style.css", "/login.css", "/favicon.ico" ).permitAll ()
                 .requestMatchers ( HttpMethod.GET,  "/files/r/**" ).permitAll ()
+                // coleta (upload reverso do cliente, sem login) + página da coleta
+                .requestMatchers ( HttpMethod.GET,  "/files/c/**", "/coleta.html" ).permitAll ()
+                .requestMatchers ( HttpMethod.POST, "/files/c/**" ).permitAll ()
+                // consentimento de acesso remoto (cliente, sem login) + página
+                // GET /acessos/{token} = página (1 segmento); POST .../consentir = grava.
+                // A listagem GET /acessos (sem segmento) continua autenticada.
+                .requestMatchers ( HttpMethod.GET,  "/acessos/*", "/consentimento.html" ).permitAll ()
+                .requestMatchers ( HttpMethod.POST, "/acessos/*/consentir" ).permitAll ()
                 // admin
                 .requestMatchers ( HttpMethod.GET,    "/users" ).hasRole ( "ADMIN" )
                 .requestMatchers ( HttpMethod.DELETE, "/users/**" ).hasRole ( "ADMIN" )
@@ -90,7 +102,8 @@ public class SecurityConfig
             "http://localhost:5500",        // Live Server VSCode
             "http://127.0.0.1:5500",       // Live Server VSCode (variante)
             "http://localhost:3000",        // dev local genérico
-            "http://localhost:8080"         // testes locais direto no Spring
+            "http://localhost:8080",        // testes locais direto no Spring
+            "http://localhost:8081"         // porta padrão local do Spring (server.port)
         ) );
 
         config.setAllowedMethods ( List.of ( "GET", "POST", "PUT", "DELETE", "OPTIONS" ) );

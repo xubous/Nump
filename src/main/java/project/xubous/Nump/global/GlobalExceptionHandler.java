@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -37,11 +38,25 @@ public class GlobalExceptionHandler
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
+    // ── Link público indisponível (expirado / revogado / limite atingido) ─────
+    @ExceptionHandler(LinkIndisponivelException.class)
+    public ResponseEntity<Map<String, Object>> handleLinkIndisponivel(LinkIndisponivelException ex)
+    {
+        return buildResponse(HttpStatus.GONE, ex.getMessage(), null);
+    }
+
     // ── Credenciais inválidas no login ────────────────────────────────────────
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex)
     {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Email ou senha incorretos", null);
+    }
+
+    // ── Recurso estático / rota inexistente → 404 (antes caía no 500 genérico) ──
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException ex)
+    {
+        return buildResponse(HttpStatus.NOT_FOUND, "Recurso não encontrado", null);
     }
 
     // ── Erro genérico ─────────────────────────────────────────────────────────

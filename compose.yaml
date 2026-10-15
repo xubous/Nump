@@ -3,9 +3,10 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - DATABASE_URL=jdbc:postgresql://db:5432/${DB_NAME}
       - DATABASE_USER=${DB_USER}
@@ -13,7 +14,8 @@ services:
       - DATABASE_DRIVER=org.postgresql.Driver
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       - JWT_SECRET=${JWT_SECRET}
-      - APP_BASE_URL=${APP_BASE_URL}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8081}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
       - H2_CONSOLE_ENABLED=false
 
   db:
@@ -26,6 +28,11 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
 volumes:
   db_data:
