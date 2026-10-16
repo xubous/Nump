@@ -188,6 +188,53 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
   background:transparent;color:var(--danger);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
 }
 .btn-del:hover{background:rgba(239,68,68,.1)}
+.btn-wpp{
+  padding:7px 12px;border:1px solid rgba(34,197,94,.25);border-radius:var(--radius-sm);
+  background:transparent;color:var(--success);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
+}
+.btn-wpp:hover{background:rgba(34,197,94,.1)}
+
+/* ── ACESSO REMOTO (AnyDesk) ────────────────────────────────────── */
+.remote-panel{padding:26px;margin-top:24px}
+.remote-panel h3{font-size:1.55rem;font-weight:700;margin-bottom:6px}
+.remote-panel .sub{color:var(--muted);font-size:.9rem;margin-bottom:20px}
+.remote-form{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.remote-form input{
+  padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:rgba(255,255,255,.03);color:var(--text);font-size:.9rem;font-family:inherit
+}
+.remote-form input:focus{outline:none;border-color:var(--accent)}
+#acesso-email{flex:1;min-width:200px}
+#acesso-exp{width:120px}
+.remote-form .btn-send{flex:0 0 auto;padding:11px 22px}
+#acesso-list{display:flex;flex-direction:column;gap:12px;max-height:420px;overflow-y:auto;padding-right:4px}
+#acesso-list::-webkit-scrollbar{width:4px}
+#acesso-list::-webkit-scrollbar-track{background:transparent}
+#acesso-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:999px}
+.acesso-card{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--radius);padding:14px 16px;transition:.2s;animation:fadeSlide .25s ease
+}
+.acesso-card:hover{border-color:rgba(93,108,255,.3)}
+.acesso-top{display:flex;align-items:center;gap:12px}
+.acesso-icon{
+  width:40px;height:40px;border-radius:10px;background:var(--accent-dim);
+  display:flex;align-items:center;justify-content:center;color:#818cf8;font-size:1rem;flex-shrink:0
+}
+.acesso-meta{flex:1;min-width:0}
+.acesso-cliente{font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acesso-info{color:var(--muted);font-size:.78rem;margin-top:3px}
+.acesso-status{font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:.03em;text-transform:uppercase;flex-shrink:0}
+.acesso-status.pendente  {background:rgba(245,158,11,.12);color:var(--warning)}
+.acesso-status.consentido{background:rgba(34,197,94,.12);color:var(--success)}
+.acesso-status.cancelado {background:rgba(148,163,184,.12);color:var(--muted)}
+.acesso-status.expirado  {background:rgba(239,68,68,.12);color:var(--danger)}
+.acesso-bottom{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.acesso-audit{
+  margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);
+  color:var(--muted);font-size:.78rem;line-height:1.5
+}
+.acesso-audit i{color:var(--success);margin-right:5px}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:2.2rem;margin-bottom:10px;display:block;opacity:.5}
@@ -213,7 +260,8 @@ body.light{
 }
 body.light .header{background:rgba(248,250,252,.9)}
 body.light .queue-item,
-body.light .file-card{background:#f9fafb}
+body.light .file-card,
+body.light .acesso-card{background:#f9fafb}
 
 /* ── ANIM ─────────────────────────────────────────────────────── */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -281,6 +329,26 @@ body.light .file-card{background:#f9fafb}
 
   </section>
 
+  <!-- ACESSO REMOTO (AnyDesk) -->
+  <section class="panel remote-panel" id="remote-panel" style="display:none">
+    <span class="panel-eyebrow">Acesso remoto</span>
+    <h3>Atendimento AnyDesk</h3>
+    <p class="sub">Gere um link temporário para o cliente autorizar o acesso à máquina dele. O link expira sozinho e vence após o primeiro uso.</p>
+
+    <div class="remote-form">
+      <input type="email" id="acesso-email" placeholder="E-mail do cliente (opcional)" autocomplete="off">
+      <input type="number" id="acesso-exp" placeholder="Validade (min)" min="1" value="15">
+      <button class="btn-send" id="btn-acesso">Gerar link de acesso</button>
+    </div>
+
+    <ul id="acesso-list">
+      <li class="empty-state">
+        <span class="empty-icon"><i class="fa-solid fa-desktop"></i></span>
+        <p>Nenhuma sessão de acesso ainda.<br>Gerar um link acima para começar.</p>
+      </li>
+    </ul>
+  </section>
+
   <section class="features">
     <div class="feature-card"><span class="f-icon"><i class="fa-solid fa-bolt"></i></span><h3>Velocidade</h3><p>Uploads ultra-rápidos otimizados para qualquer conexão.</p></div>
     <div class="feature-card"><span class="f-icon"><i class="fa-solid fa-folder-tree"></i></span><h3>Organização</h3><p>Gerencie seus arquivos com facilidade e encontre tudo rapidamente.</p></div>
@@ -309,6 +377,7 @@ let queue = [];
 window.addEventListener("DOMContentLoaded", () => {
   updateAuthSection();
   loadFiles();
+  if (localStorage.getItem("nump_token")) showRemotePanel();
 });
 
 // ── TEMA ──────────────────────────────────────────────────────────────────────
@@ -536,7 +605,140 @@ async function deleteFile(id, el) {
   }
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+// ── ACESSO REMOTO (AnyDesk) ─────────────────────────────────────────────────
+const remotePanel = document.getElementById("remote-panel");
+const acessoEmail = document.getElementById("acesso-email");
+const acessoExp   = document.getElementById("acesso-exp");
+const btnAcesso   = document.getElementById("btn-acesso");
+const acessoList  = document.getElementById("acesso-list");
+
+function showRemotePanel() {
+  remotePanel.style.display = "block";
+  loadAcessos();
+}
+
+async function loadAcessos() {
+  const token = localStorage.getItem("nump_token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${BASE_URL}/acessos`, { headers: { Authorization: "Bearer " + token } });
+    if (!res.ok) return;
+    const acessos = await res.json();
+
+    if (!acessos.length) return;
+    acessoList.innerHTML = "";
+    acessos.forEach(a => acessoList.appendChild(buildAcessoCard(a)));
+  } catch { /* falha silenciosa — lista fica no empty state */ }
+}
+
+btnAcesso.onclick = async () => {
+  const token = localStorage.getItem("nump_token");
+  if (!token) { location.href = "login.html"; return; }
+
+  btnAcesso.disabled   = true;
+  btnAcesso.textContent = "Gerando…";
+
+  try {
+    const params = new URLSearchParams();
+    if (acessoEmail.value.trim()) params.set("clienteEmail", acessoEmail.value.trim());
+    if (acessoExp.value)          params.set("expiraMinutos", acessoExp.value);
+
+    const res  = await fetch(`${BASE_URL}/acessos`, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/x-www-form-urlencoded" },
+      body: params
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    const acesso = await res.json();
+    acessoList.prepend(buildAcessoCard(acesso));
+    acessoEmail.value = "";
+
+  } catch {
+    alert("Não foi possível gerar o link de acesso. Tente novamente.");
+  } finally {
+    btnAcesso.disabled   = false;
+    btnAcesso.textContent = "Gerar link de acesso";
+  }
+};
+
+function buildAcessoCard(a) {
+  const statusCls = (a.status || "PENDENTE").toLowerCase();
+  const statusLabel = { pendente:"Pendente", consentido:"Autorizado", cancelado:"Cancelado", expirado:"Expirado" }[statusCls] || a.status;
+  const cliente = a.clienteEmail || "Cliente não identificado";
+
+  const li = document.createElement("li");
+  li.className = "acesso-card";
+  li.innerHTML = `
+    <div class="acesso-top">
+      <div class="acesso-icon"><i class="fa-solid fa-desktop"></i></div>
+      <div class="acesso-meta">
+        <div class="acesso-cliente" title="${escapeAttr(cliente)}">${escapeHtml(cliente)}</div>
+        <div class="acesso-info">criado ${fmtDataHora(a.createdAt)}${a.expiresAt ? " · expira " + fmtDataHora(a.expiresAt) : " · sem prazo"}</div>
+      </div>
+      <span class="acesso-status ${statusCls}">${statusLabel}</span>
+    </div>
+    <div class="acesso-bottom">
+      <span class="file-link" title="${escapeAttr(a.consentUrl || "")}">${escapeHtml(a.consentUrl || "")}</span>
+      <button class="btn-copy">Copiar</button>
+      <button class="btn-wpp">WhatsApp</button>
+      ${statusCls === "pendente" ? '<button class="btn-del">Cancelar</button>' : ""}
+    </div>
+    ${statusCls === "consentido" && a.consentAt ? `
+    <div class="acesso-audit">
+      <i class="fa-solid fa-shield-halved"></i>
+      Autorizado em ${fmtDataHora(a.consentAt)}${a.consentIp ? " · IP " + escapeAttr(a.consentIp) : ""}
+    </div>` : ""}`;
+
+  const consentUrl = a.consentUrl || "";
+
+  li.querySelector(".btn-copy").onclick = async function() {
+    await navigator.clipboard.writeText(consentUrl);
+    this.textContent = "Copiado!";
+    this.classList.add("ok");
+    setTimeout(() => { this.textContent = "Copiar"; this.classList.remove("ok"); }, 2000);
+  };
+
+  li.querySelector(".btn-wpp").onclick = () => {
+    const msg = "Olá! Aqui está o link para autorizar o acesso remoto ao seu computador: " + consentUrl;
+    window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+  };
+
+  const btnCancelar = li.querySelector(".btn-del");
+  if (btnCancelar) btnCancelar.onclick = () => cancelarAcesso(a.id, li);
+
+  return li;
+}
+
+async function cancelarAcesso(id, el) {
+  const token = localStorage.getItem("nump_token");
+  const res = await fetch(`${BASE_URL}/acessos/${id}`, { method:"DELETE", headers:{ Authorization:"Bearer " + token } });
+  if (res.ok) {
+    el.style.opacity = "0";
+    el.style.transform = "translateX(20px)";
+    el.style.transition = ".3s";
+    setTimeout(() => {
+      el.remove();
+      if (!acessoList.querySelector(".acesso-card"))
+        acessoList.innerHTML = `<li class="empty-state"><span class="empty-icon"><i class="fa-solid fa-desktop"></i></span><p>Nenhuma sessão de acesso ainda.<br>Gere um link acima para começar.</p></li>`;
+    }, 300);
+  }
+}
+
+function fmtDataHora(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  return d.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function escapeHtml(t) {
+  return String(t).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+const escapeAttr = escapeHtml;
 function formatSize(bytes) {
   if (bytes < 1024)       return bytes + " B";
   if (bytes < 1048576)    return (bytes/1024).toFixed(1) + " KB";

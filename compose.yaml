@@ -1,12 +1,19 @@
 services:
 
   app:
-    build: .
+    build:
+      context: .
+      # build com rede do host: contorna DNS quebrado do bridge em alguns ambientes
+      network: host
+    restart: unless-stopped
     ports:
       - "8081:8081"
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # uploads persistem fora do container (sobrevivem a restart/rebuild)
+      - uploads_data:/app/uploads
     environment:
       - DATABASE_URL=jdbc:postgresql://db:5432/${DB_NAME}
       - DATABASE_USER=${DB_USER}
@@ -20,8 +27,10 @@ services:
 
   db:
     image: postgres:16
+    restart: unless-stopped
     ports:
-      - "5432:5432"
+      # só localhost — no servidor, o Postgres nunca fica exposto pra fora
+      - "127.0.0.1:5432:5432"
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
@@ -36,3 +45,4 @@ services:
 
 volumes:
   db_data:
+  uploads_data:
