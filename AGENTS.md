@@ -163,6 +163,9 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
   via `docker compose`, nunca dorme, uploads em volume `uploads_data`, `restart: unless-stopped`,
   Postgres só em `127.0.0.1`). O Render free (transição) dorme após 15 min; o Neon free suspende
   após 5 min mas acorda em ~0,5 s. O Dockerfile separa `pom.xml` de `src/` pra cachear o Maven.
+- **Neon (produção): `ddl-auto=update` não adiciona coluna `NOT NULL` em tabela já com dados**
+  (o ALTER falha e o Hibernate engole o erro) — mudança de entidade pode exigir ALTER manual
+  (caso `download_count`/`revoked` em `table_file`, corrigido manualmente em 2026-10-16).
 - Sem paginação em listagens.
 - ⚠️ **`Compactor` grava em disco local (`user.dir/uploads`)** — no **Render** o filesystem é
   **efêmero**: arquivos enviados **somem a cada deploy/restart**. Pra produção séria, migrar pra
