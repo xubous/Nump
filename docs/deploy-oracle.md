@@ -192,6 +192,7 @@ nump.seudominio.duckdns.org {
 | `Connection refused` fora da VM | Security List sem a 8081 | Fase 3 |
 | Página 403 no `/` | Código antigo no ar | `git pull && docker compose up -d --build` |
 | Upload some após rebuild | Volume sem montar | Confira `uploads_data:/app/uploads` no compose |
+| `password authentication failed for user "nump"` | `DB_PASSWORD` mudou depois do primeiro `up` (volume já existe com a senha antiga) | Reverta o `.env` — ou, **só se os dados forem descartáveis**, `docker compose down -v` (apaga o banco local) |
 | ~1 min de espera | É o **Render** que dorme — não é esta VM | Confirme que está acessando o IP da VM |
 
 ### Sem capacidade A1?
