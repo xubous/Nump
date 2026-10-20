@@ -236,16 +236,13 @@ public class AcessoRemotoService
 
         // valores sanitizados: só entram no .bat caracteres seguros (sem injeção)
         String url      = sanitizar ( rustdeskDownloadUrl );
+        String senha    = sanitizar ( acesso.getRustdeskSenha ( ) );
         String servidor = sanitizar ( acesso.getRustdeskServer ( ) );
-        String fToken   = sanitizar ( acesso.getFerramentaToken ( ) );
 
-        if ( fToken == null )
+        if ( senha == null )
         {
             throw new LinkIndisponivelException ( "Ferramenta indisponível. Gere uma nova sessão de acesso." );
         }
-
-        // endpoint de uso único em que o .bat troca o token pela senha
-        String urlSenha = sanitizar ( baseUrl ) + "/acessos/ferramenta/" + fToken + "/senha";
 
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
@@ -269,17 +266,7 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "set \"PASTA=%TEMP%\\nump_suporte\"\r\n" );
         bat.append ( "set \"INST=%PASTA%\\rustdesk_setup.exe\"\r\n" );
-        bat.append ( "set \"SENHA=\"\r\n" );
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
-        bat.append ( "echo  Buscando a senha de atendimento no servidor...\r\n" );
-        // Busca a senha SEM for /f aninhado (que quebrava o cmd): grava a resposta
-        // num arquivo temporário e lê com set /p. Simples e à prova de aspas.
-        bat.append ( "set \"ARQSENHA=%PASTA%\\senha.txt\"\r\n" );
-        bat.append ( "if exist \"%ARQSENHA%\" del \"%ARQSENHA%\" >nul 2>&1\r\n" );
-        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"try { $r = Invoke-RestMethod -Uri '" + urlSenha + "' -UseBasicParsing; [IO.File]::WriteAllText('%ARQSENHA%', $r.senha) } catch {}\" >nul 2>&1\r\n" );
-        bat.append ( "if not exist \"%ARQSENHA%\" curl -s -L -o \"%ARQSENHA%\" \"" + urlSenha + "\" >nul 2>&1\r\n" );
-        bat.append ( "if exist \"%ARQSENHA%\" set /p \"SENHA=\"<\"%ARQSENHA%\"\r\n" );
-        bat.append ( "if not defined SENHA goto falhasenha\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
         bat.append ( "  curl -L --progress-bar -o \"%INST%\" \"" + url + "\"\r\n" );
@@ -292,7 +279,7 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  Instalando o RustDesk com a senha de atendimento...\r\n" );
         bat.append ( "echo  O Windows vai pedir permissao (UAC) - clique em \"Sim\".\r\n" );
-        bat.append ( "start /wait \"\" \"%INST%\" --silent-install --password %SENHA%\r\n" );
+        bat.append ( "start /wait \"\" \"%INST%\" --silent-install --password " + senha + "\r\n" );
         bat.append ( "set \"APP=\"\r\n" );
         bat.append ( "if exist \"C:\\Program Files\\RustDesk\\rustdesk.exe\" set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
