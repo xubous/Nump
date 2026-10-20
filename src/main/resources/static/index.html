@@ -188,6 +188,11 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
   background:transparent;color:var(--danger);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
 }
 .btn-del:hover{background:rgba(239,68,68,.1)}
+.btn-encerrar{
+  padding:7px 12px;border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);
+  background:transparent;color:var(--danger);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
+}
+.btn-encerrar:hover{background:rgba(239,68,68,.1)}
 .btn-wpp{
   padding:7px 12px;border:1px solid rgba(34,197,94,.25);border-radius:var(--radius-sm);
   background:transparent;color:var(--success);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
@@ -669,6 +674,7 @@ function buildAcessoCard(a) {
       <button class="btn-copy">Copiar</button>
       <button class="btn-wpp">WhatsApp</button>
       ${statusCls === "pendente" ? '<button class="btn-del">Cancelar</button>' : ""}
+      ${statusCls === "consentido" ? '<button class="btn-encerrar">Remover</button>' : ""}
     </div>
     ${statusCls === "consentido" && a.consentAt ? `
     <div class="acesso-audit">
@@ -693,10 +699,34 @@ function buildAcessoCard(a) {
   const btnCancelar = li.querySelector(".btn-del");
   if (btnCancelar) btnCancelar.onclick = () => cancelarAcesso(a.id, li);
 
+  // Já atendido: "Remover" limpa o painel e oferece o link de encerramento
+  // (o Nump não desinstala o RustDesk da máquina do cliente — isso é o .bat)
+  const btnEncerrar = li.querySelector(".btn-encerrar");
+  if (btnEncerrar) btnEncerrar.onclick = () => removerAtendido(a.id, li, consentUrl);
+
   return li;
 }
 
+// Remove um atendimento JÁ CONSENTIDO: apaga o registro do Nump e abre o
+// WhatsApp com a mensagem pronta + o link do "Encerrar atendimento.bat", que o
+// cliente roda para desinstalar o RustDesk da máquina dele.
+async function removerAtendido(id, el, consentUrl) {
+  const linkEncerrar = consentUrl.replace(/\/acessos\/([^/?]+).*$/, "/acessos/$1/encerrar.bat");
+
+  const msg = "Olá! O atendimento remoto terminou. Para remover o acesso do seu computador, "
+            + "ok? Abra este link, baixe o arquivo \"Encerrar atendimento.bat\" e execute: "
+            + linkEncerrar;
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+
+  await deleteAcesso(id, el);
+}
+
 async function cancelarAcesso(id, el) {
+  await deleteAcesso(id, el);
+}
+
+// DELETE /acessos/{id} + animação de saída do card
+async function deleteAcesso(id, el) {
   const token = localStorage.getItem("nump_token");
   const res = await fetch(`${BASE_URL}/acessos/${id}`, { method:"DELETE", headers:{ Authorization:"Bearer " + token } });
   if (res.ok) {

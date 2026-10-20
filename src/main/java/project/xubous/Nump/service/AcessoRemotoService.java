@@ -82,19 +82,30 @@ public class AcessoRemotoService
     @Transactional
     public void cancelarAcesso ( long id )
     {
-        if ( acessoRemotoRepository.existsByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) ) )
+        if ( ! acessoRemotoRepository.existsByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) ) )
         {
-            acessoRemotoRepository.findByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) )
-                    .ifPresent ( ( acesso ) ->
-                    {
-                        // só cancela se ainda estiver pendente
-                        if ( acesso.getStatus ( ) == StatusAcessoRemoto.PENDENTE )
-                        {
-                            acesso.setStatus ( StatusAcessoRemoto.CANCELADO );
-                            acessoRemotoRepository.save ( acesso );
-                        }
-                    } );
+            return;
         }
+
+        acessoRemotoRepository.findByIdAndOwnerEmail ( id, getCurrentUserEmail ( ) )
+                .ifPresent ( ( acesso ) ->
+                {
+                    // Pendente: só cancela (marca CANCELADO, mantém o histórico).
+                    if ( acesso.getStatus ( ) == StatusAcessoRemoto.PENDENTE )
+                    {
+                        acesso.setStatus ( StatusAcessoRemoto.CANCELADO );
+                        acessoRemotoRepository.save ( acesso );
+                    }
+                    // Já atendido (CONSENTIDO/EXPIRADO/CANCELADO): o técnico está
+                    // limpando o painel — remove o registro de vez.
+                    // Obs.: isto NÃO desinstala o RustDesk da máquina do cliente
+                    // (o Nump não alcança ela) — quem faz isso é o
+                    // "Encerrar atendimento.bat" rodado lá.
+                    else
+                    {
+                        acessoRemotoRepository.delete ( acesso );
+                    }
+                } );
     }
 
     // ── Consentimento (cliente, rota pública) ─────────────────────────────────
