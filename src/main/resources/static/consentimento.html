@@ -120,6 +120,21 @@
       transition: .2s;
     }
     .ferramenta:hover { filter: brightness(1.15); }
+    .encerrar {
+      display: block;
+      margin-top: 10px;
+      padding: 10px 14px;
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      border-radius: 10px;
+      background: rgba(248, 113, 113, 0.1);
+      color: #f87171;
+      font-size: .85rem;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      transition: .2s;
+    }
+    .encerrar:hover { filter: brightness(1.2); }
     .instrucao {
       margin-top: 10px;
       font-size: .85rem;
@@ -160,8 +175,13 @@
       <p class="instrucao" id="instrucao" style="display:none">
         1. Execute o arquivo baixado e clique em <b>Sim</b> quando o Windows pedir permissão.<br>
         2. O script instala e abre o RustDesk já com a senha de atendimento — <b>não precisa aceitar nada</b>.<br>
-        3. Envie ao técnico o <b>ID</b> exibido e mantenha o RustDesk aberto até o fim do atendimento.
+        3. Envie ao técnico o <b>ID</b> exibido e mantenha o RustDesk aberto até o fim do atendimento.<br>
+        4. <b>Ao final do atendimento</b>, baixe e execute o arquivo
+        <b>"Encerrar atendimento"</b> abaixo para remover o acesso remoto desta máquina.
       </p>
+      <a class="encerrar" id="btnEncerrar" style="display:none" href="#">
+        <i class="fa-solid fa-lock"></i> Encerrar atendimento (remover acesso remoto)
+      </a>
     </div>
   </main>
 
@@ -250,6 +270,8 @@
       if (token) {
         document.getElementById("btnFerramenta").style.display = "block";
         document.getElementById("btnFerramenta").href = `/acessos/ferramenta/${token}.bat`;
+        document.getElementById("btnEncerrar").style.display = "block";
+        document.getElementById("btnEncerrar").href = `/acessos/${token}/encerrar.bat`;
         document.getElementById("instrucao").style.display = "block";
       }
     }

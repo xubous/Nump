@@ -176,8 +176,22 @@ mostra o **ID**. O técnico conecta com esse ID e a senha — **sem o cliente ac
 > endpoint `GET /acessos/ferramenta/{fToken}/senha` é de **uso único** — a 2ª chamada devolve
 > **410 "Esta ferramenta já foi usada"** ✅
 
+### 4.7 Encerre o acesso remoto (`.bat` de encerramento)
+
+Na mesma página, clique em **"Encerrar atendimento (remover acesso remoto)"** (ou abra
+`http://localhost:8081/acessos/<TOKEN>/encerrar.bat`).
+
+**Você deve ver:** baixa o arquivo **`Encerrar atendimento.bat`**; ao rodá-lo (num Windows), ele
+**limpa a senha** (`--password ""`), **para o serviço** (`--service-uninstall`) e **mata o
+RustDesk**. Depois disso o técnico **não consegue mais conectar** — o acesso não fica válido depois
+do atendimento ✅
+
+> Teste também em token PENDENTE (não consentido): deve recusar com
+> **"Nenhum atendimento em andamento para este link"** ✅
+
 > 🎉 **Acabou de ver a F2 funcionando:** cliente autoriza → auditoria registrada →
-> RustDesk instalado com senha temporária → técnico conecta direto (acesso não atendido).
+> RustDesk instalado com senha temporária → técnico conecta direto (acesso não atendido) →
+> cliente encerra e o acesso é removido.
 
 ---
 

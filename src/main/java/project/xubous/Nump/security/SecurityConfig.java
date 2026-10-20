@@ -56,11 +56,17 @@ public class SecurityConfig
                 .requestMatchers ( HttpMethod.GET,  "/files/c/**", "/coleta.html" ).permitAll ()
                 .requestMatchers ( HttpMethod.POST, "/files/c/**" ).permitAll ()
                 // consentimento de acesso remoto (cliente, sem login) + página
-                // GET /acessos/{token} = página (1 segmento); POST .../consentir = grava;
-                // GET /acessos/ferramenta/{token}.bat = ferramenta RustDesk;
-                // GET /acessos/ferramenta/{fToken}/senha = senha de uso único do .bat.
-                // A listagem GET /acessos (sem segmento) continua autenticada.
-                .requestMatchers ( HttpMethod.GET,  "/acessos/*", "/acessos/ferramenta/**",
+                // consentimento de acesso remoto (cliente, sem login) + página.
+                // ATENÇÃO: "/acessos/**" também casa com "/acessos" (PathPattern),
+                // o que liberaria a LISTAGEM anonimamente — por isso os padrões
+                // são explícitos aqui. GET /acessos (sem segmento) continua JWT.
+                //  - GET  /acessos/{token}            = página de consentimento
+                //  - POST /acessos/{token}/consentir  = registra o consentimento
+                //  - GET  /acessos/{token}/encerrar.bat = .bat que remove o acesso
+                //  - GET  /acessos/ferramenta/{t}.bat   = ferramenta RustDesk
+                //  - GET  /acessos/ferramenta/{f}/senha = senha de uso único
+                .requestMatchers ( HttpMethod.GET,  "/acessos/*", "/acessos/*/*.bat",
+                        "/acessos/ferramenta/*", "/acessos/ferramenta/*/*",
                         "/consentimento.html" ).permitAll ()
                 .requestMatchers ( HttpMethod.POST, "/acessos/*/consentir" ).permitAll ()
                 // admin

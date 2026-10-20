@@ -300,6 +300,10 @@ public class AcessoRemotoService
         bat.append ( "echo  nada: a senha de atendimento ja esta aplicada.\r\n" );
         bat.append ( "echo  Mantenha o RustDesk aberto ate o atendimento acabar.\r\n" );
         bat.append ( "echo.\r\n" );
+        bat.append ( "echo  AO FINAL DO ATENDIMENTO: rode o arquivo\r\n" );
+        bat.append ( "echo  \"Encerrar atendimento.bat\" (baixe na mesma pagina)\r\n" );
+        bat.append ( "echo  para remover o acesso remoto desta maquina.\r\n" );
+        bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );
         bat.append ( "\r\n" );
@@ -310,6 +314,9 @@ public class AcessoRemotoService
         bat.append ( "echo  1. Abra o RustDesk (procure no menu Iniciar).\r\n" );
         bat.append ( "echo  2. Envie ao tecnico o ID exibido na janela.\r\n" );
         bat.append ( "echo  3. Mantenha aberto ate o atendimento acabar.\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  AO FINAL: rode o \"Encerrar atendimento.bat\"\r\n" );
+        bat.append ( "echo  (baixe na mesma pagina) para remover o acesso.\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );
@@ -358,6 +365,53 @@ public class AcessoRemotoService
         acessoRemotoRepository.save ( acesso );
 
         return acesso.getRustdeskSenha ( );
+    }
+
+    // Gera o .bat de ENCERRAMENTO: o cliente roda ao fim do atendimento para
+    // remover o acesso remoto (para o serviço, limpa a senha e desinstala).
+    // Assim o acesso não fica válido depois do atendimento.
+    public String gerarEncerramento ( String token )
+    {
+        AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
+                .orElseThrow ( ( ) -> new IllegalArgumentException ( "Link de acesso inválido" ) );
+
+        if ( acesso.getStatus ( ) != StatusAcessoRemoto.CONSENTIDO )
+        {
+            throw new LinkIndisponivelException ( "Nenhum atendimento em andamento para este link" );
+        }
+
+        StringBuilder bat = new StringBuilder ( );
+        bat.append ( "@echo off\r\n" );
+        bat.append ( "chcp 65001 >nul\r\n" );
+        bat.append ( "title Encerrar atendimento remoto - Nump\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  ============================================\r\n" );
+        bat.append ( "echo   Encerrar atendimento remoto - Nump\r\n" );
+        bat.append ( "echo  ============================================\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Isso remove o acesso remoto desta maquina.\r\n" );
+        bat.append ( "echo  O tecnico nao podera mais se conectar.\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Removendo o acesso remoto...\r\n" );
+        bat.append ( "set \"APP=\"\r\n" );
+        bat.append ( "if exist \"C:\\Program Files\\RustDesk\\rustdesk.exe\" set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\" set \"APP=%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP goto processo\r\n" );
+        // para o serviço e limpa a senha de acesso não atendido
+        bat.append ( "\"%APP%\" --password \"\" >nul 2>&1\r\n" );
+        bat.append ( "\"%APP%\" --service-uninstall >nul 2>&1\r\n" );
+        bat.append ( ":processo\r\n" );
+        bat.append ( "taskkill /f /im rustdesk.exe >nul 2>&1\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Acesso remoto encerrado. Voce pode fechar esta janela.\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "exit /b 0\r\n" );
+
+        return bat.toString ( );
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

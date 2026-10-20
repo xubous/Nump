@@ -78,15 +78,20 @@ cat > .env <<'EOF'
 DB_NAME=nump
 DB_USER=nump
 DB_PASSWORD=<troque-por-uma-senha-aleatoria>
-JWT_SECRET=<troque-por-32-bytes-aleatorios>
+JWT_SECRET=<troque-por-um-segredo-aleatorio-forte>
 APP_BASE_URL=http://<IP-DA-VM>:8081
 # N8N_WEBHOOK_URL=           # opcional (webhook n8n)
 EOF
 
 # gerador rápido de segredos (roda na VM):
 #   openssl rand -base64 24   # para DB_PASSWORD
-#   openssl rand -hex 16      # para JWT_SECRET (32 chars)
+#   openssl rand -base64 48   # para JWT_SECRET  ← segredo forte (não use valor previsível!)
 ```
+
+> ⚠️ **`JWT_SECRET` é o segredo mais crítico do Nump.** Quem o descobre forja um token de admin e
+> acessa **tudo** (arquivos, sessões de acesso remoto, usuários). Gere **aleatório** com
+> `openssl rand -base64 48` — nunca reaproveite um valor de exemplo ou "de teste". Detalhes e como
+> **trocar** um segredo já em produção: `docs/seguranca-jwt-secret.md`.
 
 Suba tudo:
 

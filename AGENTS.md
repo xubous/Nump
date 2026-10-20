@@ -130,6 +130,7 @@ src/main/resources/
 | POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e o `ferramentaToken` (uso único), lê o ID do RustDesk do n8n (opcional) |
 | GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso), **busca a senha no servidor** (não a carrega em texto claro) e instala em silêncio com ela |
 | GET | `/acessos/ferramenta/{fToken}/senha` | **público / uso único** → troca o `ferramentaToken` pela senha em texto puro (o `.bat` chama isso na execução); 2ª chamada → 410 |
+| GET | `/acessos/{token}/encerrar.bat` | **público** → `.bat` "Encerrar atendimento": o cliente roda ao fim para **remover o acesso remoto** (limpa a senha, para o serviço e mata o RustDesk) |
 
 > **Fluxo RustDesk (F2) — acesso NÃO ATENDIDO:** o `.bat` baixa o instalador oficial
 > (`app.rustdesk.download-url`, default RustDesk **1.5.0**; env `RUSTDESK_DOWNLOAD_URL`) usando
@@ -156,7 +157,12 @@ src/main/resources/
   `/style.css`, `/login.css`, `/favicon.ico` — a API continua protegida por JWT.
 - Rotas públicas: `OPTIONS /**`, `POST /users/register`, `POST /users/login`, `GET /files/r/**`,
   `GET|POST /files/c/**` (coleta), `GET /acessos/{token}`, `POST /acessos/{token}/consentir`,
-  `GET /acessos/ferramenta/**` (ferramenta RustDesk + senha de uso único), `GET /actuator/health`.
+  `GET /acessos/ferramenta/**` (ferramenta RustDesk + senha de uso único),
+  `GET /acessos/*/*.bat` (encerrar atendimento), `GET /actuator/health`.
+- ⚠️ **Armadilha do Spring Security 6:** `"/acessos/**"` **também casa com `/acessos`** (PathPattern),
+  o que liberaria a **listagem de sessões** anonimamente. Por isso os padrões de `/acessos` são
+  **explícitos** (`/acessos/*`, `/acessos/*/*.bat`, `/acessos/ferramenta/*`, `/acessos/ferramenta/*/*`)
+  — nunca use `/acessos/**` ali.
 - Admin: `GET /users`, `DELETE /users/**`.
 - **Arquitetura C (Docker único):** frontend e API são **mesma origem** → CORS não é usado no
   fluxo real. A config de CORS ainda lista origens (legado do Vercel, já aposentado) — pode ser simplificada.
@@ -207,6 +213,11 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
   (`SecureRandom`, ~2^120) em vez de 8; a **senha não vai mais em texto claro dentro do `.bat`** —
   o script a busca em `GET /acessos/ferramenta/{fToken}/senha` (token de uso único; 2ª chamada 410).
   Tokens de **arquivo/coleta continuam de 8 chars** (não mudou o F1).
+- **Encerramento do acesso remoto (2026-10-20):** o `.bat` "Encerrar atendimento"
+  (`GET /acessos/{token}/encerrar.bat`) remove o acesso ao fim do atendimento — limpa a senha
+  (`--password ""`), para o serviço (`--service-uninstall`) e mata o processo. A ferramenta e a
+  página do cliente orientam o cliente a rodá-lo. **A senha do RustDesk não expira sozinha** — sem
+  esse `.bat`, o acesso continua válido enquanto o RustDesk estiver instalado.
 - Testes automatizados: apenas `NumpApplicationTests` (context load) — **exige `JWT_SECRET`
   definido** (`JWT_SECRET=... ./mvnw test`), senão o contexto não sobe. O restante é coberto pelos
   planos manuais em `docs/` (`roteiro-de-testes.md`, `plano-de-testes*.md`).

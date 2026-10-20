@@ -55,7 +55,19 @@ public class AcessoRemotoController
 
     // ── Rotas públicas do cliente ─────────────────────────────────────────────
 
-    // GET /acesso/{token} — página pública de consentimento (rota pública).
+    // GET /acessos/{token}/encerrar.bat — .bat de encerramento (rota pública).
+    // O cliente roda no fim do atendimento para remover o acesso remoto.
+    @GetMapping ( "/{token}/encerrar.bat" )
+    public ResponseEntity < byte [ ] > baixarEncerramento ( @PathVariable String token )
+    {
+        String bat = acessoRemotoService.gerarEncerramento ( token );
+
+        return ResponseEntity.ok ( )
+                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Encerrar atendimento.bat\"" )
+                .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
+    }
+
+    // GET /acessos/{token} — página pública de consentimento (rota pública).
     // Serve a página estática /consentimento.html, que lê o token do query string.
     @GetMapping ( "/{token}" )
     public ResponseEntity < Void > getPaginaConsentimento ( @PathVariable String token )
