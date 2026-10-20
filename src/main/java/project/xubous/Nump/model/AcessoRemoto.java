@@ -56,4 +56,10 @@ public class AcessoRemoto
     private String rustdeskId;          // ID do RustDesk (quando o n8n informa)
     private String rustdeskSenha;       // senha temporária gerada pelo Nump
     private String rustdeskServer;      // servidor próprio (host:port), opcional (n8n)
+
+    // Token de uso único que o .bat usa para BUSCAR a senha no servidor na hora
+    // da execução — assim o .bat baixado NÃO carrega a senha em texto claro.
+    // Gerado no consentimento e consumido (zerado) na primeira busca.
+    private String ferramentaToken;
+    private LocalDateTime ferramentaUsadaEm;
 }

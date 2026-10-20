@@ -216,7 +216,9 @@
     };
 
     // Mostra o que o n8n devolveu (ID do RustDesk, quando configurado) + a
-    // senha temporária gerada pelo Nump, e o botão da ferramenta de acesso
+    // senha temporária gerada pelo Nump, e o botão da ferramenta de acesso.
+    // O .bat NÃO sai com a senha: ele busca no servidor (token de uso único
+    // já embutido no próprio .bat) na hora da execução.
     function montarDados(data) {
       const rd  = data.rustdesk;
       const n8n = data.n8n;

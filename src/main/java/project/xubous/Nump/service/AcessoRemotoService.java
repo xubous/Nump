@@ -33,6 +33,10 @@ public class AcessoRemotoService
     @Value ( "${app.rustdesk.download-url:https://github.com/rustdesk/rustdesk/releases/download/1.5.0/rustdesk-1.5.0-x86_64.exe}" )
     private String rustdeskDownloadUrl;
 
+    // Base pública do Nump — usada pelo .bat para buscar a senha na execução
+    @Value ( "${app.base-url:http://localhost:8080}" )
+    private String baseUrl;
+
     public AcessoRemotoService ( AcessoRemotoRepository acessoRemotoRepository,
                                  Shortener shortener,
                                  WebhookPublisher webhookPublisher )
@@ -46,7 +50,8 @@ public class AcessoRemotoService
 
     public AcessoRemoto criarAcesso ( String clienteEmail, Integer expiraMinutos )
     {
-        String token = shortener.generateToken ( );
+        // token longo: o link dá acesso à máquina do cliente, não vale 8 chars
+        String token = shortener.generateTokenSeguro ( );
 
         int validade = expiraMinutos != null ? expiraMinutos : acessoExpiracaoMinutos;
 
@@ -160,6 +165,11 @@ public class AcessoRemotoService
         acesso.setRustdeskId     ( rustdeskId );
         acesso.setRustdeskSenha  ( rustdeskSenha );
         acesso.setRustdeskServer ( rustdeskServer );
+
+        // token de uso único que o .bat usa para buscar a senha na execução
+        // (assim o arquivo baixado não sai com a senha em texto claro)
+        acesso.setFerramentaToken   ( gerarTokenFerramenta ( ) );
+        acesso.setFerramentaUsadaEm ( null );
         acessoRemotoRepository.save ( acesso );
 
         // payload devolvido à página do cliente
@@ -167,6 +177,8 @@ public class AcessoRemotoService
         resultado.put ( "autorizado", true );
         resultado.put ( "token", acesso.getToken ( ) );
         resultado.put ( "consentAt", acesso.getConsentAt ( ).toString ( ) );
+        // o .bat usa este token de uso único para buscar a senha na execução
+        resultado.put ( "ferramentaToken", acesso.getFerramentaToken ( ) );
 
         // dados RustDesk (a página exibe a senha; o ID vem do script)
         Map < String, Object > rustdesk = new HashMap <> ( );
@@ -195,9 +207,10 @@ public class AcessoRemotoService
     // Gera o .bat que o cliente executa na máquina dele. Fluxo:
     //   1. baixa o RustDesk RÁPIDO (curl com barra de progresso, não o lento
     //      Invoke-WebRequest do PowerShell; BITS/fallback se o curl faltar);
-    //   2. instala em silêncio com a senha temporária já aplicada
-    //      (cliente clica 1x "Sim" no UAC);
-    //   3. abre o RustDesk e mostra o ID para o técnico.
+    //   2. BUSCA a senha temporária no servidor (token de uso único) — o .bat
+    //      baixado NÃO carrega a senha em texto claro;
+    //   3. instala em silêncio com a senha já aplicada (cliente clica 1x "Sim");
+    //   4. abre o RustDesk e mostra o ID para o técnico.
     // Resultado: ACESSO NÃO ATENDIDO — o técnico conecta direto com ID + senha,
     // sem o cliente precisar aceitar a conexão de novo.
     public String gerarFerramenta ( String token )
@@ -212,8 +225,16 @@ public class AcessoRemotoService
 
         // valores sanitizados: só entram no .bat caracteres seguros (sem injeção)
         String url      = sanitizar ( rustdeskDownloadUrl );
-        String senha    = sanitizar ( acesso.getRustdeskSenha ( ) );
         String servidor = sanitizar ( acesso.getRustdeskServer ( ) );
+        String fToken   = sanitizar ( acesso.getFerramentaToken ( ) );
+
+        if ( fToken == null )
+        {
+            throw new LinkIndisponivelException ( "Ferramenta indisponível. Gere uma nova sessão de acesso." );
+        }
+
+        // endpoint de uso único em que o .bat troca o token pela senha
+        String urlSenha = sanitizar ( baseUrl ) + "/acessos/ferramenta/" + fToken + "/senha";
 
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
@@ -226,7 +247,14 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "set \"PASTA=%TEMP%\\nump_suporte\"\r\n" );
         bat.append ( "set \"INST=%PASTA%\\rustdesk_setup.exe\"\r\n" );
+        bat.append ( "set \"SENHA=\"\r\n" );
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
+        bat.append ( "echo  Buscando a senha de atendimento no servidor...\r\n" );
+        bat.append ( "for /f \"delims=\" %%s in ('curl -s -L \"" + urlSenha + "\"') do if not defined SENHA set \"SENHA=%%s\"\r\n" );
+        bat.append ( "if not defined SENHA (\r\n" );
+        bat.append ( "  for /f \"delims=\" %%s in ('powershell -NoProfile -Command \"(Invoke-RestMethod -Uri '\" + urlSenha + \"' -UseBasicParsing).senha\"') do if not defined SENHA set \"SENHA=%%s\"\r\n" );
+        bat.append ( ")\r\n" );
+        bat.append ( "if not defined SENHA goto falhasenha\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
         bat.append ( "  curl -L --progress-bar -o \"%INST%\" \"" + url + "\"\r\n" );
@@ -239,7 +267,7 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  Instalando o RustDesk com a senha de atendimento...\r\n" );
         bat.append ( "echo  O Windows vai pedir permissao (UAC) - clique em \"Sim\".\r\n" );
-        bat.append ( "start /wait \"\" \"%INST%\" --silent-install --password " + senha + "\r\n" );
+        bat.append ( "start /wait \"\" \"%INST%\" --silent-install --password %SENHA%\r\n" );
         bat.append ( "set \"APP=\"\r\n" );
         bat.append ( "if exist \"C:\\Program Files\\RustDesk\\rustdesk.exe\" set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
@@ -286,6 +314,15 @@ public class AcessoRemotoService
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );
         bat.append ( "\r\n" );
+        bat.append ( ":falhasenha\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Nao foi possivel obter a senha de atendimento.\r\n" );
+        bat.append ( "echo  O link pode ter expirado ou ja ter sido usado.\r\n" );
+        bat.append ( "echo  Peca ao tecnico para gerar um novo link.\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "exit /b 1\r\n" );
+        bat.append ( "\r\n" );
         bat.append ( ":falha\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  Nao foi possivel preparar o acesso remoto.\r\n" );
@@ -296,6 +333,31 @@ public class AcessoRemotoService
         bat.append ( "exit /b 1\r\n" );
 
         return bat.toString ( );
+    }
+
+    // Troca o token de uso único pela senha temporária (usado pelo .bat).
+    // Consome o token: a segunda tentativa falha (não dá para raspar a senha
+    // baixando o .bat de novo e chamando o endpoint repetidas vezes).
+    @Transactional
+    public String obterSenhaPorFerramentaToken ( String ferramentaToken )
+    {
+        AcessoRemoto acesso = acessoRemotoRepository.findByFerramentaToken ( ferramentaToken )
+                .orElseThrow ( ( ) -> new LinkIndisponivelException ( "Link de ferramenta inválido" ) );
+
+        if ( acesso.getStatus ( ) != StatusAcessoRemoto.CONSENTIDO )
+        {
+            throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
+        }
+
+        if ( acesso.getFerramentaUsadaEm ( ) != null )
+        {
+            throw new LinkIndisponivelException ( "Esta ferramenta já foi usada. Gere um novo link." );
+        }
+
+        acesso.setFerramentaUsadaEm ( LocalDateTime.now ( ) );
+        acessoRemotoRepository.save ( acesso );
+
+        return acesso.getRustdeskSenha ( );
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -318,6 +380,12 @@ public class AcessoRemotoService
         }
 
         return null;
+    }
+
+    // Token de uso único do .bat (24 chars aleatórios) — não dá para adivinhar
+    private String gerarTokenFerramenta ( )
+    {
+        return shortener.generateTokenSeguro ( );
     }
 
     // Senha temporária (SecureRandom) gerada pelo Nump no consentimento.

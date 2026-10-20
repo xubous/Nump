@@ -66,7 +66,7 @@ public class AcessoRemotoController
     }
 
     // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta RustDesk (rota pública).
-    // O .bat é gerado na hora com a senha temporária da sessão já consentida.
+    // O .bat NÃO carrega a senha: ele a busca no endpoint abaixo na execução.
     @GetMapping ( "/ferramenta/{token}.bat" )
     public ResponseEntity < byte [ ] > baixarFerramenta ( @PathVariable String token )
     {
@@ -75,6 +75,15 @@ public class AcessoRemotoController
         return ResponseEntity.ok ( )
                 .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.bat\"" )
                 .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
+    }
+
+    // GET /acessos/ferramenta/{fToken}/senha — troca o token de uso único do .bat
+    // pela senha temporária (rota pública, consumo único). Devolve texto puro para
+    // o .bat capturar com um `for /f`, sem precisar de parser de JSON.
+    @GetMapping ( value = "/ferramenta/{fToken}/senha", produces = "text/plain;charset=UTF-8" )
+    public ResponseEntity < String > obterSenhaFerramenta ( @PathVariable String fToken )
+    {
+        return ResponseEntity.ok ( acessoRemotoService.obterSenhaPorFerramentaToken ( fToken ) );
     }
 
     // POST /acessos/{token}/consentir — registra a autorização do cliente (rota pública).

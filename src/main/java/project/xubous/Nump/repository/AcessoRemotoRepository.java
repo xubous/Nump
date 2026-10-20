@@ -12,6 +12,7 @@ import project.xubous.Nump.model.AcessoRemoto;
 public interface AcessoRemotoRepository extends JpaRepository < AcessoRemoto, Long >
 {
     Optional < AcessoRemoto > findByToken ( String token );
+    Optional < AcessoRemoto > findByFerramentaToken ( String ferramentaToken );
     Optional < AcessoRemoto > findByIdAndOwnerEmail ( Long id, String ownerEmail );
     List < AcessoRemoto > findAllByOwnerEmailOrderByCreatedAtDesc ( String ownerEmail );
     boolean existsByIdAndOwnerEmail ( Long id, String ownerEmail );

@@ -80,12 +80,13 @@ src/main/resources/
 - **File** (`table_file`): id, path, size, token, downloadUrl, `ownerEmail`,
   + F1: `description`, `expiresAt`, `maxDownloads`, `downloadCount`, `revoked`, `origem` (enum `OrigemArquivo`).
 - **UploadLink** (F1, coleta/upload reverso): token de coleta, `expiresAt`, `maxUploads`, `uploadCount`, `descricao`, dono.
-- **AcessoRemoto** (F2, consentimento de acesso remoto — **RustDesk com senha temporária**): token,
-  `status` (enum `StatusAcessoRemoto`), `expiresAt`, consentimento (timestamp/IP/user-agent),
-  senha temporária gerada pelo Nump (`rustdeskSenha`) + dados do n8n (`rustdeskId`,
-  `rustdeskServer` — nullable), dono.
-  A senha dá **acesso não atendido**: o script aplica ela na máquina do cliente e o técnico
-  conecta direto, sem o cliente aceitar de novo.
+- **AcessoRemoto** (F2, consentimento de acesso remoto — **RustDesk com senha temporária**): token
+  (24 chars, `SecureRandom`), `status` (enum `StatusAcessoRemoto`), `expiresAt`, consentimento
+  (timestamp/IP/user-agent), senha temporária gerada pelo Nump (`rustdeskSenha`) + dados do n8n
+  (`rustdeskId`, `rustdeskServer` — nullable), `ferramentaToken` (uso único do `.bat`) +
+  `ferramentaUsadaEm`, dono.
+  A senha dá **acesso não atendido**: o script busca a senha no servidor na execução, aplica na
+  máquina do cliente e o técnico conecta direto, sem o cliente aceitar de novo.
 - **DownloadLog** (F1): arquivo, ip, userAgent, timestamp.
 
 ### Rotas de usuário (`/users`)
@@ -126,14 +127,17 @@ src/main/resources/
 | GET | `/acessos` | autenticado (dono) → lista sessões |
 | DELETE | `/acessos/{id}` | autenticado (dono) → cancela se pendente |
 | GET | `/acessos/{token}` | **público** → redirect `/consentimento.html` |
-| POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e lê o ID do RustDesk do n8n (opcional) |
-| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso, não PowerShell), instala em silêncio **com a senha temporária** e mostra o ID |
+| POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e o `ferramentaToken` (uso único), lê o ID do RustDesk do n8n (opcional) |
+| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso), **busca a senha no servidor** (não a carrega em texto claro) e instala em silêncio com ela |
+| GET | `/acessos/ferramenta/{fToken}/senha` | **público / uso único** → troca o `ferramentaToken` pela senha em texto puro (o `.bat` chama isso na execução); 2ª chamada → 410 |
 
 > **Fluxo RustDesk (F2) — acesso NÃO ATENDIDO:** o `.bat` baixa o instalador oficial
 > (`app.rustdesk.download-url`, default RustDesk **1.5.0**; env `RUSTDESK_DOWNLOAD_URL`) usando
 > **`curl --progress-bar`** (rápido + dá feedback); se o `curl` não existir, cai para **BITS**
-> (`Start-BitsTransfer`). Instala com `--silent-install --password <senha temporária>` (cliente
-> clica **1x** em "Sim" no UAC), abre o RustDesk, espera o ID (`--get-id`, com retry) e mostra.
+> (`Start-BitsTransfer`). A **senha NÃO vai embutida no `.bat`**: o script a busca em
+> `GET /acessos/ferramenta/{fToken}/senha` (token de uso único, consumo único → 2ª vez 410);
+> depois `--silent-install --password <senha>` (cliente clica **1x** em "Sim" no UAC), abre o
+> RustDesk, espera o ID (`--get-id`, com retry) e mostra.
 > Resultado: o técnico conecta **direto com ID + senha**, sem o cliente aceitar a conexão.
 > A senha é **sempre gerada pelo Nump** (SecureRandom 12 chars, sem 0/O/1/I) no consentimento —
 > a senha do n8n é ignorada de propósito. O n8n pode informar `rustdeskId`/`rustdeskServer`
@@ -152,7 +156,7 @@ src/main/resources/
   `/style.css`, `/login.css`, `/favicon.ico` — a API continua protegida por JWT.
 - Rotas públicas: `OPTIONS /**`, `POST /users/register`, `POST /users/login`, `GET /files/r/**`,
   `GET|POST /files/c/**` (coleta), `GET /acessos/{token}`, `POST /acessos/{token}/consentir`,
-  `GET /acessos/ferramenta/{token}.bat` (ferramenta RustDesk), `GET /actuator/health`.
+  `GET /acessos/ferramenta/**` (ferramenta RustDesk + senha de uso único), `GET /actuator/health`.
 - Admin: `GET /users`, `DELETE /users/**`.
 - **Arquitetura C (Docker único):** frontend e API são **mesma origem** → CORS não é usado no
   fluxo real. A config de CORS ainda lista origens (legado do Vercel, já aposentado) — pode ser simplificada.
@@ -198,6 +202,11 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
   mas `application.properties` define `jwt.expiration` → a propriedade configurada **não tem efeito**.
 - `data/*.mv.db` (H2) está versionado por engano — não é usado quando `DATABASE_URL` está setada.
 - `JWT_SECRET` de produção deve ser aleatório (o atual é válido, 32 bytes, mas previsível).
+  Gerar com: `openssl rand -base64 48` e definir no `.env` do servidor (nunca commitar).
+- **F2 endurecido (2026-10-20):** token do link de acesso remoto agora tem **24 chars**
+  (`SecureRandom`, ~2^120) em vez de 8; a **senha não vai mais em texto claro dentro do `.bat`** —
+  o script a busca em `GET /acessos/ferramenta/{fToken}/senha` (token de uso único; 2ª chamada 410).
+  Tokens de **arquivo/coleta continuam de 8 chars** (não mudou o F1).
 - Testes automatizados: apenas `NumpApplicationTests` (context load) — **exige `JWT_SECRET`
   definido** (`JWT_SECRET=... ./mvnw test`), senão o contexto não sobe. O restante é coberto pelos
   planos manuais em `docs/` (`roteiro-de-testes.md`, `plano-de-testes*.md`).

@@ -163,13 +163,18 @@ Volte no seu painel / lista de sessões (`GET /acessos`).
 Clique no botão **"Baixar ferramenta de acesso (Windows)"** (ou abra
 `http://localhost:8081/acessos/ferramenta/<TOKEN>.bat`).
 
-**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**; ao executar (num Windows), ele baixa o
-RustDesk **rápido** (barra de progresso do `curl`; se o `curl` faltar, usa BITS), instala em
-silêncio já com a **senha temporária** (clique **Sim** no UAC uma vez), abre o RustDesk e mostra o
-**ID**. O técnico conecta com esse ID e a senha — **sem o cliente aceitar nada** ✅
+**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**; ao executar (num Windows), ele **busca a
+senha de atendimento no servidor** (token de uso único — a senha **não** vai em texto claro no
+`.bat`), baixa o RustDesk **rápido** (barra de progresso do `curl`; se o `curl` faltar, usa BITS),
+instala em silêncio já com a **senha temporária** (clique **Sim** no UAC uma vez), abre o RustDesk e
+mostra o **ID**. O técnico conecta com esse ID e a senha — **sem o cliente aceitar nada** ✅
 
 > Teste também **antes do consentimento** (token ainda PENDENTE): deve recusar com
 > **"Autorize o acesso antes de baixar a ferramenta"** ✅
+>
+> Segurança (endurecido em 2026-10-20): o **link de acesso remoto tem 24 chars** (antes 8) e o
+> endpoint `GET /acessos/ferramenta/{fToken}/senha` é de **uso único** — a 2ª chamada devolve
+> **410 "Esta ferramenta já foi usada"** ✅
 
 > 🎉 **Acabou de ver a F2 funcionando:** cliente autoriza → auditoria registrada →
 > RustDesk instalado com senha temporária → técnico conecta direto (acesso não atendido).
