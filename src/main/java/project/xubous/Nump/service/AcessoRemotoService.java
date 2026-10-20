@@ -251,6 +251,17 @@ public class AcessoRemotoService
         bat.append ( "@echo off\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
         bat.append ( "setlocal enableextensions\r\n" );
+        // Rede de segurança: o corpo roda dentro de :main (via call). Se algo
+        // abortar de forma inesperada, o cmd volta aqui e a janela NÃO fecha —
+        // mostra a mensagem e espera o cliente ler.
+        bat.append ( "call :main\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Atendimento encerrado. Voce pode fechar esta janela.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "endlocal\r\n" );
+        bat.append ( "exit /b 0\r\n" );
+        bat.append ( "\r\n" );
+        bat.append ( ":main\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo   Atendimento remoto seguro - Nump\r\n" );
@@ -261,10 +272,13 @@ public class AcessoRemotoService
         bat.append ( "set \"SENHA=\"\r\n" );
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
         bat.append ( "echo  Buscando a senha de atendimento no servidor...\r\n" );
-        // Busca a senha: PowerShell é mais confiável aqui do que o for /f sobre o
-        // curl (evita problemas de aspas aninhadas). O curl continua como plano B.
-        bat.append ( "for /f \"usebackq delims=\" %%s in (`powershell -NoProfile -ExecutionPolicy Bypass -Command \"try{(Invoke-RestMethod -Uri '" + urlSenha + "' -UseBasicParsing).senha}catch{}\"`) do if not defined SENHA set \"SENHA=%%s\"\r\n" );
-        bat.append ( "if not defined SENHA for /f \"delims=\" %%s in ('curl -s -L \"" + urlSenha + "\"') do if not defined SENHA set \"SENHA=%%s\"\r\n" );
+        // Busca a senha SEM for /f aninhado (que quebrava o cmd): grava a resposta
+        // num arquivo temporário e lê com set /p. Simples e à prova de aspas.
+        bat.append ( "set \"ARQSENHA=%PASTA%\\senha.txt\"\r\n" );
+        bat.append ( "if exist \"%ARQSENHA%\" del \"%ARQSENHA%\" >nul 2>&1\r\n" );
+        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"try { $r = Invoke-RestMethod -Uri '" + urlSenha + "' -UseBasicParsing; [IO.File]::WriteAllText('%ARQSENHA%', $r.senha) } catch {}\" >nul 2>&1\r\n" );
+        bat.append ( "if not exist \"%ARQSENHA%\" curl -s -L -o \"%ARQSENHA%\" \"" + urlSenha + "\" >nul 2>&1\r\n" );
+        bat.append ( "if exist \"%ARQSENHA%\" set /p \"SENHA=\"<\"%ARQSENHA%\"\r\n" );
         bat.append ( "if not defined SENHA goto falhasenha\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
