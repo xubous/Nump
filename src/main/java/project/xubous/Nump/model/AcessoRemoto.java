@@ -16,7 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 // Sessão de acesso remoto: link temporário em que o cliente autoriza o acesso
-// (AnyDesk portátil — o .bat baixa o AnyDesk.exe e o cliente clica em "Aceitar").
+// (RustDesk com senha temporária — o script instala o RustDesk, aplica a senha
+// e mostra o ID; o técnico conecta DIRETO, sem o cliente aceitar de novo).
 // Guarda a trilha de auditoria do consentimento (quem, quando, de qual IP/agente).
 @Entity
 @Table ( name = "table_acesso_remoto" )
@@ -47,14 +48,12 @@ public class AcessoRemoto
     @Column ( nullable = false )
     private String ownerEmail;
 
-    // ── Dados da sessão AnyDesk (vêm do n8n quando ele responde; opcionais) ──
-    // Colunas nullable: só preenchidas após o consentimento, e só se o n8n
-    // devolver os dados. Sem n8n o fluxo continua (o .bat baixa o AnyDesk
-    // portátil e o cliente autoriza clicando em "Aceitar").
-    // Nota: no banco (Neon) as colunas ainda se chamam rustdesk_id/rustdesk_senha
-    // (legado do fluxo anterior com RustDesk) — renomear exigiria ALTER manual.
-    @Column ( name = "rustdesk_id" )
-    private String anydeskId;           // ID do AnyDesk (quando o n8n informa)
-    @Column ( name = "rustdesk_senha" )
-    private String anydeskSenha;        // senha de acesso não atendido (quando o n8n informa)
+    // ── Dados da sessão RustDesk ─────────────────────────────────────────────
+    // A senha é SEMPRE gerada pelo Nump (SecureRandom) no consentimento e
+    // aplicada pelo script na máquina do cliente — é o que dá acesso não
+    // atendido (o técnico conecta sem o cliente aceitar).
+    // O ID vem do n8n quando ele responde; o script descobre o ID localmente.
+    private String rustdeskId;          // ID do RustDesk (quando o n8n informa)
+    private String rustdeskSenha;       // senha temporária gerada pelo Nump
+    private String rustdeskServer;      // servidor próprio (host:port), opcional (n8n)
 }

@@ -2,11 +2,11 @@
 
 > Documento de trabalho. Complementa a seção **10. Visão n8n / Roadmap** do `AGENTS.md`.
 > Objetivo de negócio: **reduzir o tempo de atendimento técnico ao cliente** (liberar acesso
-> remoto AnyDesk, enviar ferramentas de suporte, coletar logs, etc.).
+> remoto, enviar ferramentas de suporte, coletar logs, etc.).
 
 ## Como usar este plano
 
-- A trilha está dividida em **fases** do mais simples (aprender) ao objetivo final (AnyDesk).
+- A trilha está dividida em **fases** do mais simples (aprender) ao objetivo final (acesso remoto).
 - Cada fase tem: **objetivo**, **pré-requisitos**, **tarefas**, **entregável** e **critério de pronto**.
 - Marque `[x]` conforme concluir. A IA deve atualizar este arquivo a cada avanço.
 - Aprender e construir caminham juntos: a Fase 0–1 ensina n8n; a Fase 2+ mexe no Nump.
@@ -97,7 +97,7 @@ Do `AGENTS.md` seção 8/10 — nada abaixo está implementado:
 
 ---
 
-## Fase 4 — Link de consentimento de acesso remoto (AnyDesk)
+## Fase 4 — Link de consentimento de acesso remoto (RustDesk)
 
 **Objetivo:** o objetivo central do autor — cliente autoriza acesso em 1 clique.
 
@@ -105,7 +105,7 @@ Do `AGENTS.md` seção 8/10 — nada abaixo está implementado:
 - [ ] Endpoint público de consentimento que registra timestamp, IP e user-agent.
 - [ ] Página pública simples (HTML em `static/`) com botão "Autorizo o acesso remoto".
 - [ ] Ao consentir → chamar webhook do n8n → n8n libera a sessão.
-- [ ] n8n envia ao técnico o ID/senha do AnyDesk (ou abre `anydesk:<id>`).
+- [ ] n8n envia ao técnico o ID do RustDesk (e o servidor, se houver).
 - [ ] Link expira automaticamente (ex.: 15 min) e/ou após uso único (usar Fase 3).
 - [ ] Trilha de auditoria do consentimento (quem, quando, de qual IP).
 

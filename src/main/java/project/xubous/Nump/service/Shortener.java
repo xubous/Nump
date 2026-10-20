@@ -27,7 +27,7 @@ public class Shortener
         return baseUrl + "/files/c/" + token;
     }
 
-    // Link de consentimento de acesso remoto: o cliente abre e autoriza o AnyDesk
+    // Link de consentimento de acesso remoto: o cliente abre e autoriza o RustDesk
     public String generateConsentUrl ( String token )
     {
         return baseUrl + "/acessos/" + token;

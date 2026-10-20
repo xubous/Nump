@@ -40,11 +40,11 @@ Abrir sessão remota com o cliente sem fricção e com registro de autorização
 - **Consentimento registrado** — timestamp, IP e user-agent de quem autorizou (trilha de
   auditoria).
 - **Link temporário** — expira em minutos (ex.: 15 min) e/ou é de uso único.
-- **Entrega dos dados da sessão** — envia ao técnico o ID/senha do AnyDesk ou abre direto o
-  protocolo `anydesk:<id>`.
+- **Entrega dos dados da sessão** — a ferramenta de acesso remoto (RustDesk) chega ao cliente com a
+  senha temporária já aplicada: o técnico conecta direto com ID + senha, sem o cliente aceitar.
 - **Aviso ao técnico** — n8n notifica "cliente autorizou" assim que ele consentir.
 
-*Repetitivo que elimina:* "baixa o AnyDesk, me manda o código, espera autorizar, o link caiu".
+*Repetitivo que elimina:* "baixa a ferramenta, me manda o código, espera autorizar, o link caiu".
 
 ## 3. Organizar arquivos
 
@@ -190,7 +190,7 @@ Página de soluções comuns que o cliente consulta **antes** de abrir chamado.
 | `WebhookPublisher` (Nump avisa o n8n) | ❌ não existe | 4 |
 | Upload com metadados (recipient, description, expiresAt, maxDownloads) | ❌ não existe | 1, 3, 7 |
 | Expiração/uso único/revogação de token | ❌ não existe | 1, 2 |
-| Endpoint público de consentimento AnyDesk | ❌ não existe | 2 |
+| Endpoint público de consentimento de acesso remoto | ✅ F2 | 2 |
 | Storage externo (S3/MinIO) — disco local não escala | ❌ não existe | 1, 3, 7, 9 |
 | Busca/histórico de arquivos (metadados, versões) | ❌ não existe | 3, 11 |
 | Cadastro de clientes/máquinas (mínimo) | ❌ não existe | 7, 11, 12 |

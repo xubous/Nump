@@ -2,7 +2,7 @@
 
 > Documento de trabalho. Complementa `docs/plano-n8n.md` e a seção 8 do `AGENTS.md`.
 > Objetivo: validar as funcionalidades **1 (transferência de arquivos)** e
-> **2 (conexão com a máquina / consentimento AnyDesk)** de ponta a ponta.
+> **2 (conexão com a máquina / consentimento RustDesk)** de ponta a ponta.
 >
 > Marque `[x]` conforme executar. A IA deve atualizar este arquivo a cada avanço.
 
@@ -169,7 +169,7 @@ curl -s -X DELETE localhost:8080/files/coletas/$ID_COLETA -H "Authorization: Bea
 
 ---
 
-## 4. F2 — Acesso remoto (consentimento AnyDesk)
+## 4. F2 — Acesso remoto (consentimento RustDesk)
 
 ### 4.1 Técnico cria sessão
 ```bash
@@ -243,14 +243,14 @@ curl -s -X POST localhost:8080/acessos/$TOKEN_ACESSO/consentir \
 Suba um receptor rápido para capturar os eventos e simular a resposta do n8n:
 
 ```bash
-# receptor Python que loga o POST e responde com dados do AnyDesk
+# receptor Python que loga o POST e responde com o ID do RustDesk
 python3 - <<'EOF'
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class H(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get('Content-Length', 0)); body = self.rfile.read(n)
         print("RECEBIDO:", body.decode(), flush=True)
-        resp = b'{"anydeskId":"123456789","anydeskSenha":"abc123"}'
+        resp = b'{"rustdeskId":"123456789","rustdeskServer":"meuservidor:21116"}'
         self.send_response(200)
         self.send_header('Content-Type','application/json')
         self.send_header('Content-Length',str(len(resp))); self.end_headers()
@@ -265,7 +265,7 @@ Suba a app com `N8N_WEBHOOK_URL=http://localhost:9999`.
 - [ ] `arquivo_baixado` dispara no download.
 - [ ] `coleta_recebida` dispara no upload reverso.
 - [ ] `acesso_consentido` dispara no consentimento **e** a página `consentimento.html`
-      exibe o ID/senha do AnyDesk com botão "Copiar dados".
+      exibe a senha gerada pelo Nump + o ID do RustDesk (se o n8n devolver) com botão "Copiar dados".
 - [ ] Payload tem `evento` e `emitidoEm`.
 - [ ] **Receptor desligado**: upload/download/consentimento continuam funcionando
       (webhook é best-effort, só loga aviso).

@@ -65,8 +65,8 @@ Abra `http://localhost:8080` e **crie uma conta** em `/register.html` (ou use um
 | D2 | Conferir visual | Título "Autorizar acesso remoto" + caixa de aviso com ícone de escudo |
 | D3 | Ler o aviso | Menciona que fica **registrado (data, hora e IP)** e é temporário |
 | D4 | Preencher email (opcional) e clicar **"Autorizo o acesso remoto"** | Vira "Registrando autorização…" |
-| D5 | Ver o resultado | Painel verde "Acesso autorizado" + dados da sessão (ou aviso "técnico avisado, aguarde") |
-| D6 | Com n8n configurado | Mostra **ID do AnyDesk, senha e link** + botão **"Copiar dados"** |
+| D5 | Ver o resultado | Painel verde "Acesso autorizado" + **senha gerada pelo Nump** |
+| D6 | Com n8n configurado | Mostra **ID do RustDesk** (e servidor, se houver) + botão **"Copiar dados"** |
 | D7 | Clicar "Copiar dados" | Botão vira "Copiado!" |
 | D8 | Tentar usar o **mesmo link de novo** | Recusa com "Este link já foi utilizado" (uso único) |
 | D9 | Conferir no painel do técnico | Sessão aparece como **CONSENTIDO** com data/hora/IP |
@@ -80,7 +80,7 @@ Abra `http://localhost:8080` e **crie uma conta** em `/register.html` (ou use um
 | # | Passo | Esperado |
 |---|-------|----------|
 | E1 | No n8n: criar workflow **Webhook** (nó "Webhook"), copiar a URL (ex.: `http://localhost:5678/webhook/abc`) | URL copiada |
-| E2 | (Opcional) ligar um nó **Respond to Webhook** devolvendo `{"anydeskId":"999","anydeskSenha":"xyz"}` | Workflow salvo e **ativo** (toggle ON) |
+| E2 | (Opcional) ligar um nó **Respond to Webhook** devolvendo `{"rustdeskId":"999","rustdeskServer":"meuservidor:21116"}` | Workflow salvo e **ativo** (toggle ON) |
 | E3 | Subir a app com `N8N_WEBHOOK_URL=<a URL do webhook>` | App no ar |
 | E4 | Fazer **upload** de um arquivo | O nó Webhook dispara com `evento: arquivo_enviado` |
 | E5 | **Baixar** o arquivo | Dispara `evento: arquivo_baixado` |

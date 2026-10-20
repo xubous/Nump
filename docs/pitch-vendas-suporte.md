@@ -75,7 +75,7 @@ e padroniza o "como resolvo da primeira vez".
 | 4 | **Base de conhecimento com RAG** (consultar manuais/tickets resolvidos com citação) | resposta com fonte |
 | 5 | Links **expiráveis e de uso único** + senha opcional | segurança em conteúdos sensíveis |
 | 6 | **Webhooks**: Nump avisa o n8n no upload/download | confirmação de recebimento |
-| 7 | **Consentimento de acesso remoto (AnyDesk)** com registro de IP/horário | auditoria de acesso |
+| 7 | **Consentimento de acesso remoto (RustDesk)** com senha temporária e registro de IP/horário | auditoria de acesso |
 
 **Mais adiante (diferencial):**
 

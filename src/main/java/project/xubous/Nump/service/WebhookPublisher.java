@@ -63,7 +63,7 @@ public class WebhookPublisher
 
     // ── Síncrono: dispara e devolve o JSON que o n8n respondeu ────────────────
     // Usado no consentimento de acesso remoto, onde a página exibe o que o n8n
-    // devolver (ex.: ID/senha do AnyDesk). Em caso de falha devolve mapa vazio.
+    // devolver (ex.: ID do RustDesk). Em caso de falha devolve mapa vazio.
     public Map < String, Object > publicarESperar ( String evento, Map < String, Object > payload )
     {
         if ( !configurado ( ) )

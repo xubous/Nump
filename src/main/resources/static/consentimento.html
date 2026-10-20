@@ -158,10 +158,9 @@
         <i class="fa-solid fa-download"></i> Baixar ferramenta de acesso (Windows)
       </a>
       <p class="instrucao" id="instrucao" style="display:none">
-        1. Execute o arquivo baixado (é portátil — <b>não precisa instalar</b> nem pedir autorização).<br>
-        2. Aguarde a janela do AnyDesk carregar e envie ao técnico o <b>ID grande exibido no topo da
-        janela</b> (só envie quando parar de dizer "Conectando").<br>
-        3. Mantenha o AnyDesk aberto e, quando o técnico conectar, clique em <b>Aceitar</b>. Pronto!
+        1. Execute o arquivo baixado e clique em <b>Sim</b> quando o Windows pedir permissão.<br>
+        2. O script instala e abre o RustDesk já com a senha de atendimento — <b>não precisa aceitar nada</b>.<br>
+        3. Envie ao técnico o <b>ID</b> exibido e mantenha o RustDesk aberto até o fim do atendimento.
       </p>
     </div>
   </main>
@@ -216,23 +215,23 @@
       });
     };
 
-    // Mostra o que o n8n devolveu (ID/senha do AnyDesk, quando configurado) e o
-    // botão para baixar a ferramenta de acesso remoto (.bat gerado pelo Nump)
+    // Mostra o que o n8n devolveu (ID do RustDesk, quando configurado) + a
+    // senha temporária gerada pelo Nump, e o botão da ferramenta de acesso
     function montarDados(data) {
-      const ad  = data.anydesk;
+      const rd  = data.rustdesk;
       const n8n = data.n8n;
       let html = "";
       dadosParaCopiar = "";
 
-      // ── AnyDesk (vem do n8n; opcional — sem n8n o .bat resolve sozinho) ────
-      if (ad) {
-        if (ad.id)    { html += linha("ID do AnyDesk", ad.id); dadosParaCopiar += "ID AnyDesk: " + ad.id + "\n"; }
-        if (ad.senha) { html += linha("Senha AnyDesk", ad.senha); dadosParaCopiar += "Senha AnyDesk: " + ad.senha + "\n"; }
-        if (ad.link)  { html += linha("Link", ad.link);          dadosParaCopiar += "Link: " + ad.link + "\n"; }
+      // ── RustDesk (senha gerada pelo Nump; ID do n8n quando houver) ──────────
+      if (rd) {
+        if (rd.id)    { html += linha("ID do RustDesk", rd.id); dadosParaCopiar += "ID RustDesk: " + rd.id + "\n"; }
+        if (rd.senha) { html += linha("Senha", rd.senha);       dadosParaCopiar += "Senha: " + rd.senha + "\n"; }
+        if (rd.server){ html += linha("Servidor", rd.server);   dadosParaCopiar += "Servidor: " + rd.server + "\n"; }
       }
 
       // se o n8n devolveu algo que não reconhecemos, mostra o JSON cru
-      if (!ad && n8n) {
+      if (!rd && n8n) {
         html += `<div class="linha muted">Detalhes técnicos:</div>
                  <div class="linha" style="font-family:monospace;font-size:.8rem">${escapeHtml(JSON.stringify(n8n))}</div>`;
       }
@@ -245,7 +244,7 @@
       dadosEl.innerHTML = html;
       copiarBtn.style.display = dadosParaCopiar ? "inline-block" : "none";
 
-      // ferramenta AnyDesk: sempre disponível após o consentimento
+      // ferramenta RustDesk: sempre disponível após o consentimento
       if (token) {
         document.getElementById("btnFerramenta").style.display = "block";
         document.getElementById("btnFerramenta").href = `/acessos/ferramenta/${token}.bat`;
