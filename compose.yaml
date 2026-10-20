@@ -22,6 +22,7 @@ services:
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       - JWT_SECRET=${JWT_SECRET}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8081}
+      - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
       - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
       - H2_CONSOLE_ENABLED=false
 
