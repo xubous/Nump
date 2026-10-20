@@ -405,9 +405,12 @@ public class AcessoRemotoService
         return bat.toString ( );
     }
 
-    // Troca o token de uso único pela senha temporária (usado pelo .bat).
-    // Consome o token: a segunda tentativa falha (não dá para raspar a senha
-    // baixando o .bat de novo e chamando o endpoint repetidas vezes).
+    // Troca o token da ferramenta pela senha temporária (usado pelo .bat).
+    // NÃO consome o token: o cliente pode rodar o .bat mais de uma vez dentro do
+    // prazo da sessão (rerodar, antivírus executando 2x, etc.) sem cair em erro.
+    // A senha continua FORA do arquivo baixado — só é obtida em runtime, e a
+    // sessão já expira sozinha (expiresAt). A primeira busca fica registrada em
+    // ferramentaUsadaEm (auditoria), mas não bloqueia as seguintes.
     @Transactional
     public String obterSenhaPorFerramentaToken ( String ferramentaToken )
     {
@@ -419,13 +422,12 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        if ( acesso.getFerramentaUsadaEm ( ) != null )
+        // registra a primeira utilização (auditoria), sem bloquear as demais
+        if ( acesso.getFerramentaUsadaEm ( ) == null )
         {
-            throw new LinkIndisponivelException ( "Esta ferramenta já foi usada. Gere um novo link." );
+            acesso.setFerramentaUsadaEm ( LocalDateTime.now ( ) );
+            acessoRemotoRepository.save ( acesso );
         }
-
-        acesso.setFerramentaUsadaEm ( LocalDateTime.now ( ) );
-        acessoRemotoRepository.save ( acesso );
 
         return acesso.getRustdeskSenha ( );
     }
