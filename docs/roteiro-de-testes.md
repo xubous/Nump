@@ -169,6 +169,13 @@ senha de atendimento no servidor** (token de uso único — a senha **não** vai
 instala em silêncio já com a **senha temporária** (clique **Sim** no UAC uma vez), abre o RustDesk e
 mostra o **ID**. O técnico conecta com esse ID e a senha — **sem o cliente aceitar nada** ✅
 
+**No fim do atendimento**, o `.bat` mostra um menu e espera a escolha do cliente:
+
+| Tecla | O que acontece |
+|---|---|
+| **`1`** | **Remove o acesso**: apaga a senha, para o serviço e desinstala o RustDesk — o técnico **não conecta mais** (pode pedir UAC) |
+| **`2`** | **Mantém o acesso**: RustDesk fica instalado com a **senha de atendimento** (acesso permanente — a senha não expira) |
+
 > Teste também **antes do consentimento** (token ainda PENDENTE): deve recusar com
 > **"Autorize o acesso antes de baixar a ferramenta"** ✅
 >
@@ -176,22 +183,19 @@ mostra o **ID**. O técnico conecta com esse ID e a senha — **sem o cliente ac
 > endpoint `GET /acessos/ferramenta/{fToken}/senha` é de **uso único** — a 2ª chamada devolve
 > **410 "Esta ferramenta já foi usada"** ✅
 
-### 4.7 Encerre o acesso remoto (`.bat` de encerramento)
+### 4.7 Encerre o acesso remoto depois (opcional, `.bat` de encerramento)
 
-Na mesma página, clique em **"Encerrar atendimento (remover acesso remoto)"** (ou abra
-`http://localhost:8081/acessos/<TOKEN>/encerrar.bat`).
-
-**Você deve ver:** baixa o arquivo **`Encerrar atendimento.bat`**; ao rodá-lo (num Windows), ele
-**limpa a senha** (`--password ""`), **para o serviço** (`--service-uninstall`) e **mata o
-RustDesk**. Depois disso o técnico **não consegue mais conectar** — o acesso não fica válido depois
-do atendimento ✅
+Se o cliente escolheu **2** (ou fechou o script) e mais tarde quiser remover o acesso, na mesma
+página o botão **"Encerrar atendimento (remover acesso remoto)"** (ou
+`http://localhost:8081/acessos/<TOKEN>/encerrar.bat`) faz o mesmo do `1`: limpa a senha, para o
+serviço e mata o RustDesk ✅
 
 > Teste também em token PENDENTE (não consentido): deve recusar com
 > **"Nenhum atendimento em andamento para este link"** ✅
 
 > 🎉 **Acabou de ver a F2 funcionando:** cliente autoriza → auditoria registrada →
 > RustDesk instalado com senha temporária → técnico conecta direto (acesso não atendido) →
-> cliente encerra e o acesso é removido.
+> cliente escolhe no fim (remover ou manter).
 
 ---
 

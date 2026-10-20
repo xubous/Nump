@@ -128,7 +128,7 @@ src/main/resources/
 | DELETE | `/acessos/{id}` | autenticado (dono) → cancela se pendente |
 | GET | `/acessos/{token}` | **público** → redirect `/consentimento.html` |
 | POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e o `ferramentaToken` (uso único), lê o ID do RustDesk do n8n (opcional) |
-| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso), **busca a senha no servidor** (não a carrega em texto claro) e instala em silêncio com ela |
+| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso), **busca a senha no servidor** (não a carrega em texto claro), instala em silêncio com ela e, **no fim do atendimento, pergunta ao cliente** `[1] remover o acesso` / `[2] manter (senha vitalícia)` |
 | GET | `/acessos/ferramenta/{fToken}/senha` | **público / uso único** → troca o `ferramentaToken` pela senha em texto puro (o `.bat` chama isso na execução); 2ª chamada → 410 |
 | GET | `/acessos/{token}/encerrar.bat` | **público** → `.bat` "Encerrar atendimento": o cliente roda ao fim para **remover o acesso remoto** (limpa a senha, para o serviço e mata o RustDesk) |
 
@@ -140,6 +140,11 @@ src/main/resources/
 > depois `--silent-install --password <senha>` (cliente clica **1x** em "Sim" no UAC), abre o
 > RustDesk, espera o ID (`--get-id`, com retry) e mostra.
 > Resultado: o técnico conecta **direto com ID + senha**, sem o cliente aceitar a conexão.
+> **No fim do atendimento**, o próprio `.bat` abre um menu: **`1`** = remover o acesso (desinstala
+> o RustDesk, apaga a senha) ou **`2`** = manter o RustDesk instalado com a senha de atendimento
+> (**acesso permanente / "senha vitalícia"** — a senha do RustDesk não expira sozinha). Se o
+> cliente fechar sem escolher, o acesso fica ativo; o `Encerrar atendimento.bat`
+> (`/acessos/{token}/encerrar.bat`) remove depois, a qualquer momento.
 > A senha é **sempre gerada pelo Nump** (SecureRandom 12 chars, sem 0/O/1/I) no consentimento —
 > a senha do n8n é ignorada de propósito. O n8n pode informar `rustdeskId`/`rustdeskServer`
 > (aceita `anydeskId` como alias) e é opcional: **sem n8n o script descobre o ID localmente**.
