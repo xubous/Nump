@@ -1,6 +1,5 @@
 package project.xubous.Nump.service;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -29,9 +28,9 @@ public class AcessoRemotoService
     @Value ( "${app.acesso.expiracao-minutos:15}" )
     private int acessoExpiracaoMinutos;
 
-    // instalador do RustDesk que a ferramenta baixa na máquina do cliente
-    @Value ( "${app.rustdesk.download-url:https://github.com/rustdesk/rustdesk/releases/download/1.5.0/rustdesk-1.5.0-x86_64.exe}" )
-    private String rustdeskDownloadUrl;
+    // AnyDesk portátil que a ferramenta baixa na máquina do cliente (sem instalar)
+    @Value ( "${app.anydesk.download-url:https://download.anydesk.com/AnyDesk.exe}" )
+    private String anydeskDownloadUrl;
 
     public AcessoRemotoService ( AcessoRemotoRepository acessoRemotoRepository,
                                  Shortener shortener,
@@ -136,7 +135,7 @@ public class AcessoRemotoService
 
         acessoRemotoRepository.save ( acesso );
 
-        // ── Avisa o n8n e lê a resposta (ID/senha do RustDesk/AnyDesk, etc.) ──
+        // ── Avisa o n8n e lê a resposta (ID/senha do AnyDesk, etc.) ───────────
         Map < String, Object > payload = new HashMap <> ( );
         payload.put ( "token", acesso.getToken ( ) );
         payload.put ( "consentUrl", acesso.getConsentUrl ( ) );
@@ -148,23 +147,16 @@ public class AcessoRemotoService
 
         Map < String, Object > respostaN8n = webhookPublisher.publicarESperar ( "acesso_consentido", payload );
 
-        // ── Dados RustDesk: o n8n se responder, senão o Nump gera a senha ─────
-        // (só aceitamos chaves específicas do rustdesk — chaves genéricas como
-        //  "id"/"senha" podem ser do AnyDesk e não devem virar dados RustDesk)
-        String rustdeskId     = texto ( respostaN8n, "rustdeskId", "rustdesk_id" );
-        String rustdeskSenha  = texto ( respostaN8n, "rustdeskSenha", "rustdesk_senha",
-                                                "rustdeskPassword", "rustdesk_password" );
-        String rustdeskServer = texto ( respostaN8n, "rustdeskServer", "rustdesk_server" );
+        // ── Dados AnyDesk: vêm do n8n quando ele responde (opcional) ─────────
+        // Sem n8n (ou se ele não responder), o fluxo continua igual: o .bat baixa
+        // o AnyDesk portátil e o cliente autoriza a conexão clicando em "Aceitar".
+        String anydeskId    = texto ( respostaN8n, "anydeskId", "anydesk_id" );
+        String anydeskSenha = texto ( respostaN8n, "anydeskSenha", "anydesk_senha",
+                                                "anydeskPassword", "anydesk_password" );
+        String anydeskLink  = texto ( respostaN8n, "anydeskUrl", "anydesk_url" );
 
-        if ( rustdeskSenha == null )
-        {
-            // fallback: senha temporária aleatória (funciona sem n8n ligado)
-            rustdeskSenha = gerarSenhaTemporaria ( );
-        }
-
-        acesso.setRustdeskId     ( rustdeskId );
-        acesso.setRustdeskSenha  ( rustdeskSenha );
-        acesso.setRustdeskServer ( rustdeskServer );
+        acesso.setAnydeskId    ( anydeskId );
+        acesso.setAnydeskSenha ( anydeskSenha );
         acessoRemotoRepository.save ( acesso );
 
         // payload devolvido à página do cliente
@@ -173,20 +165,26 @@ public class AcessoRemotoService
         resultado.put ( "token", acesso.getToken ( ) );
         resultado.put ( "consentAt", acesso.getConsentAt ( ).toString ( ) );
 
-        // dados RustDesk (página usa para exibir e para baixar a ferramenta .bat)
-        Map < String, Object > rustdesk = new HashMap <> ( );
-        if ( rustdeskId != null )
+        // dados AnyDesk (a página exibe quando o n8n devolveu)
+        Map < String, Object > anydesk = new HashMap <> ( );
+        if ( anydeskId != null )
         {
-            rustdesk.put ( "id", rustdeskId );
+            anydesk.put ( "id", anydeskId );
         }
-        rustdesk.put ( "senha", rustdeskSenha );
-        if ( rustdeskServer != null )
+        if ( anydeskSenha != null )
         {
-            rustdesk.put ( "server", rustdeskServer );
+            anydesk.put ( "senha", anydeskSenha );
         }
-        resultado.put ( "rustdesk", rustdesk );
+        if ( anydeskLink != null )
+        {
+            anydesk.put ( "link", anydeskLink );
+        }
+        if ( !anydesk.isEmpty ( ) )
+        {
+            resultado.put ( "anydesk", anydesk );
+        }
 
-        // se o n8n devolveu dados de sessão (ex.: anydeskId/anydeskSenha), repassa
+        // se o n8n devolveu algo não mapeado, repassa o JSON cru para a página exibir
         if ( respostaN8n != null && !respostaN8n.isEmpty ( ) )
         {
             resultado.put ( "n8n", respostaN8n );
@@ -195,10 +193,13 @@ public class AcessoRemotoService
         return resultado;
     }
 
-    // ── Ferramenta RustDesk para o cliente baixar ─────────────────────────────
+    // ── Ferramenta AnyDesk para o cliente baixar ─────────────────────────────
 
-    // Gera o .bat que o cliente executa na máquina dele: baixa o RustDesk,
-    // aplica a senha temporária da sessão e mostra o ID para o técnico conectar.
+    // Gera o .bat que o cliente executa na máquina dele: baixa o AnyDesk
+    // portátil (sem instalar, sem pedir admin), abre e mostra o ID para o
+    // técnico conectar. Se o download automático falhar, o .bat tenta de novo
+    // com o curl nativo do Windows e, em último caso, abre a página oficial do
+    // AnyDesk no navegador — nunca deixa o cliente sem caminho.
     public String gerarFerramenta ( String token )
     {
         AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
@@ -210,9 +211,7 @@ public class AcessoRemotoService
         }
 
         // valores sanitizados: só entram no .bat caracteres seguros (sem injeção)
-        String url     = sanitizar ( rustdeskDownloadUrl );
-        String senha   = sanitizar ( acesso.getRustdeskSenha ( ) );
-        String servidor = sanitizar ( acesso.getRustdeskServer ( ) );
+        String url = sanitizar ( anydeskDownloadUrl );
 
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
@@ -224,45 +223,60 @@ public class AcessoRemotoService
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "set \"PASTA=%TEMP%\\nump_suporte\"\r\n" );
-        bat.append ( "set \"INST=%PASTA%\\rustdesk_instalar.exe\"\r\n" );
-        bat.append ( "set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "set \"APP=%PASTA%\\AnyDesk.exe\"\r\n" );
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
-        bat.append ( "if not exist \"%INST%\" (\r\n" );
-        bat.append ( "  echo  Baixando a ferramenta de acesso remoto, aguarde...\r\n" );
-        bat.append ( "  powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + url + "' -OutFile '%INST%'\"\r\n" );
-        bat.append ( ")\r\n" );
-        bat.append ( "if not exist \"%INST%\" goto falha\r\n" );
         bat.append ( "if not exist \"%APP%\" (\r\n" );
-        bat.append ( "  echo  Instalando o RustDesk. O Windows pode pedir autorizacao...\r\n" );
-        bat.append ( "  start /wait \"\" \"%INST%\" --silent-install\r\n" );
+        bat.append ( "  echo  Baixando o AnyDesk (e portatil, nao precisa instalar), aguarde...\r\n" );
+        bat.append ( "  powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + url + "' -OutFile '%APP%'\"\r\n" );
         bat.append ( ")\r\n" );
         bat.append ( "if not exist \"%APP%\" (\r\n" );
-        bat.append ( "  echo  Instalacao automatica nao concluida. Abrindo o instalador...\r\n" );
-        bat.append ( "  start /wait \"\" \"%INST%\"\r\n" );
+        bat.append ( "  echo  Tentando de novo com o download nativo do Windows...\r\n" );
+        bat.append ( "  curl -L -s -o \"%APP%\" \"" + url + "\"\r\n" );
         bat.append ( ")\r\n" );
-        bat.append ( "if not exist \"%APP%\" goto falha\r\n" );
-        if ( servidor != null )
-        {
-            bat.append ( "set \"RUSTDESK_API_HOST=" + servidor + "\"\r\n" );
-        }
+        bat.append ( "if not exist \"%APP%\" goto navegador\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Autorizando a sessao temporaria...\r\n" );
-        bat.append ( "start \"\" \"%APP%\" --password " + senha + "\r\n" );
-        bat.append ( "timeout /t 6 >nul\r\n" );
-        bat.append ( "for /f \"delims=\" %%i in ('\"%APP%\" --get-id') do set \"ID=%%i\"\r\n" );
+        bat.append ( "echo  Abrindo o AnyDesk...\r\n" );
+        bat.append ( "start \"\" \"%APP%\"\r\n" );
+        bat.append ( "timeout /t 8 >nul\r\n" );
+        bat.append ( "pushd \"%PASTA%\"\r\n" );
+        bat.append ( "for /f \"delims=\" %%i in ('AnyDesk.exe --get-id') do set \"ID=%%i\"\r\n" );
+        bat.append ( "popd\r\n" );
+        bat.append ( "if not defined ID goto idmanual\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  --------------------------------------------\r\n" );
         bat.append ( "echo   Compartilhe este ID com o tecnico: %ID%\r\n" );
         bat.append ( "echo  --------------------------------------------\r\n" );
         bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Mantenha o AnyDesk aberto. Quando o tecnico\r\n" );
+        bat.append ( "echo  conectar, clique em \"Aceitar\" para liberar.\r\n" );
+        bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );
         bat.append ( "\r\n" );
-        bat.append ( ":falha\r\n" );
+        bat.append ( ":idmanual\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Nao foi possivel preparar o acesso remoto.\r\n" );
-        bat.append ( "echo  Baixe o RustDesk manualmente em: https://rustdesk.com\r\n" );
-        bat.append ( "echo  e informe o ID exibido ao tecnico.\r\n" );
+        bat.append ( "echo  --------------------------------------------\r\n" );
+        bat.append ( "echo   Abra a janela do AnyDesk e envie ao tecnico\r\n" );
+        bat.append ( "echo   o ID grande exibido no topo da tela.\r\n" );
+        bat.append ( "echo  --------------------------------------------\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Mantenha o AnyDesk aberto e clique em \"Aceitar\"\r\n" );
+        bat.append ( "echo  quando o tecnico conectar.\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "exit /b 0\r\n" );
+        bat.append ( "\r\n" );
+        bat.append ( ":navegador\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  O download automatico nao funcionou. Abrindo a\r\n" );
+        bat.append ( "echo  pagina oficial do AnyDesk para voce baixar...\r\n" );
+        bat.append ( "start \"\" \"" + url + "\"\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  1. Salve o AnyDesk.exe e abra-o (nao precisa instalar).\r\n" );
+        bat.append ( "echo  2. Envie ao tecnico o ID grande exibido no topo.\r\n" );
+        bat.append ( "echo  3. Mantenha o AnyDesk aberto e clique em \"Aceitar\"\r\n" );
+        bat.append ( "echo     quando o tecnico conectar.\r\n" );
+        bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 1\r\n" );
 
@@ -291,25 +305,8 @@ public class AcessoRemotoService
         return null;
     }
 
-    // Senha temporária alfanumérica (SecureRandom) usada quando o n8n não responde
-    private String gerarSenhaTemporaria ( )
-    {
-        // sem 0/O e 1/I para o cliente não confundir ao digitar
-        String alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-        StringBuilder senha  = new StringBuilder ( );
-        SecureRandom random = new SecureRandom ( );
-
-        for ( int i = 0; i < 10; i++ )
-        {
-            senha.append ( alfabeto.charAt ( random.nextInt ( alfabeto.length ( ) ) ) );
-        }
-
-        return senha.toString ( );
-    }
-
     // Mantém só caracteres seguros para entrar dentro do .bat (evita injeção).
-    // Permite "/" e ":" para a URL de download do RustDesk ficar íntegra.
+    // Permite "/" e ":" para a URL de download do AnyDesk ficar íntegra.
     private String sanitizar ( String valor )
     {
         if ( valor == null )

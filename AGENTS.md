@@ -35,11 +35,11 @@ Já existem duas funcionalidades nessa linha: **F1 (transferência de arquivos)*
 # Rodar localmente (H2 em memória; JWT_SECRET é obrigatório; sobe na porta 8081)
 JWT_SECRET=dev-secret-com-no-minimo-32-bytes ./mvnw spring-boot:run
 
-# Build
-./mvnw clean package
+# Build (o teste de contexto exige JWT_SECRET — ou use -DskipTests)
+JWT_SECRET=dev-secret-com-no-minimo-32-bytes ./mvnw clean package
 
-# Testes
-./mvnw test
+# Testes (JWT_SECRET é obrigatório, senão o contexto não sobe)
+JWT_SECRET=dev-secret-com-no-minimo-32-bytes ./mvnw test
 
 # Subir stack completa (app + postgres) — requer .env
 docker compose up --build
@@ -48,7 +48,8 @@ docker compose up --build
 Variáveis de ambiente (ver `application.properties` e `compose.yaml`):
 `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASS`, `DATABASE_DRIVER`,
 `SPRING_JPA_DATABASE_PLATFORM`, `JWT_SECRET` (**obrigatória, sem fallback**), `APP_BASE_URL`,
-`H2_CONSOLE_ENABLED`, `N8N_WEBHOOK_URL` (opcional — webhook n8n, best-effort).
+`H2_CONSOLE_ENABLED`, `N8N_WEBHOOK_URL` (opcional — webhook n8n, best-effort),
+`ANYDESK_DOWNLOAD_URL` (opcional — URL do AnyDesk portátil que o `.bat` do F2 baixa).
 
 > **Porta:** a app sobe na **8081** por padrão (`server.port=${SERVER_PORT:8081}`; 8080 está
 > bloqueado na rede local do autor). No Render, apontar a porta do serviço para **8081**.
@@ -79,10 +80,12 @@ src/main/resources/
 - **File** (`table_file`): id, path, size, token, downloadUrl, `ownerEmail`,
   + F1: `description`, `expiresAt`, `maxDownloads`, `downloadCount`, `revoked`, `origem` (enum `OrigemArquivo`).
 - **UploadLink** (F1, coleta/upload reverso): token de coleta, `expiresAt`, `maxUploads`, `uploadCount`, `descricao`, dono.
-- **AcessoRemoto** (F2, consentimento de acesso remoto — RustDesk com compat AnyDesk): token,
+- **AcessoRemoto** (F2, consentimento de acesso remoto — **AnyDesk portátil**): token,
   `status` (enum `StatusAcessoRemoto`), `expiresAt`, consentimento (timestamp/IP/user-agent),
-  dados do n8n + dados RustDesk (`rustdeskId`, `rustdeskSenha`, `rustdeskServer` — nullable),
-  dono.
+  dados do n8n (`anydeskId`/`anydeskSenha` — nullable; no banco as colunas legadas ainda se
+  chamam `rustdesk_id`/`rustdesk_senha`, renomear exige ALTER manual no Neon), dono.
+  A senha gerada pelo Nump e o `rustdeskServer` foram removidos junto da migração p/ AnyDesk
+  (a coluna `rustdesk_server` ficou órfã no banco, inofensiva).
 - **DownloadLog** (F1): arquivo, ip, userAgent, timestamp.
 
 ### Rotas de usuário (`/users`)
@@ -116,21 +119,26 @@ src/main/resources/
 | GET | `/files/c/{token}` | **público** → redirect `/coleta.html` (página onde o cliente envia) |
 | POST | `/files/c/{token}` | **público** → recebe o arquivo sem login (`multipart`, campo `file`) |
 
-### Rotas de acesso remoto (`/acessos`) — F2 (consentimento RustDesk)
+### Rotas de acesso remoto (`/acessos`) — F2 (consentimento AnyDesk)
 | Método | Rota | Acesso |
 |--------|------|--------|
 | POST | `/acessos` | autenticado → cria sessão (`clienteEmail`, `expiraMinutos`) → devolve `consentUrl` |
 | GET | `/acessos` | autenticado (dono) → lista sessões |
 | DELETE | `/acessos/{id}` | autenticado (dono) → cancela se pendente |
 | GET | `/acessos/{token}` | **público** → redirect `/consentimento.html` |
-| POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), resolve dados RustDesk (n8n ou senha fallback gerada pelo Nump) e devolve a resposta do n8n |
-| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o instalador RustDesk, aplica a senha temporária da sessão consentida e mostra o ID para o técnico conectar |
+| POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), lê os dados AnyDesk que o n8n devolver (opcional) e devolve a resposta |
+| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **AnyDesk portátil** (sem instalar), abre e mostra o ID para o técnico conectar |
 
-> **Fluxo RustDesk (F2):** o `.bat` usa o instalador oficial (`app.rustdesk.download-url`,
-> default RustDesk **1.5.0**; sobrescrever via env `RUSTDESK_DOWNLOAD_URL`). A senha vem do n8n
-> (`rustdeskSenha`/`rustdesk_id`/`rustdesk_server`) ou é gerada pelo Nump (SecureRandom, 10 chars)
-> quando o n8n não responde. Valores são sanitizados antes de entrar no `.bat` (anti-injeção).
-> Compat AnyDesk mantida: a página exibe `anydeskId`/`anydeskSenha`/`anydeskUrl` se o n8n devolver.
+> **Fluxo AnyDesk (F2):** o `.bat` baixa o AnyDesk portátil (`app.anydesk.download-url`, default
+> `https://download.anydesk.com/AnyDesk.exe`, ~8,5 MB; sobrescrever via env `ANYDESK_DOWNLOAD_URL`),
+> abre **sem instalar e sem pedir admin** e exibe o ID (`--get-id`); o cliente autoriza clicando em
+> **"Aceitar"** quando o técnico conecta. Se o download falhar, o `.bat` tenta de novo com o `curl`
+> nativo do Windows e, em último caso, **abre a página oficial do AnyDesk no navegador** (não manda
+> o cliente baixar "às cegas"). A URL é sanitizada antes de entrar no `.bat` (anti-injeção).
+> Dados de sessão (`anydeskId`/`anydeskSenha`/`anydeskUrl`) só existem se o n8n devolver no
+> webhook — **sem n8n o fluxo funciona igual** (testado em 2026-10-20: n8n fora do ar, o
+> consentimento responde em <1 s e o `.bat` é gerado normalmente).
+> A página também exibe o JSON cru do n8n se ele devolver algo não mapeado.
 
 ### Fluxo de upload
 1. `Shortener.generateToken()` → token de 8 chars (UUID truncado).
@@ -145,7 +153,7 @@ src/main/resources/
   `/style.css`, `/login.css`, `/favicon.ico` — a API continua protegida por JWT.
 - Rotas públicas: `OPTIONS /**`, `POST /users/register`, `POST /users/login`, `GET /files/r/**`,
   `GET|POST /files/c/**` (coleta), `GET /acessos/{token}`, `POST /acessos/{token}/consentir`,
-  `GET /actuator/health`.
+  `GET /acessos/ferramenta/{token}.bat` (ferramenta AnyDesk), `GET /actuator/health`.
 - Admin: `GET /users`, `DELETE /users/**`.
 - **Arquitetura C (Docker único):** frontend e API são **mesma origem** → CORS não é usado no
   fluxo real. A config de CORS ainda lista origens (legado do Vercel, já aposentado) — pode ser simplificada.
@@ -167,8 +175,8 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
 
 - **Implementado:** F1 (links temporários com expiração/revogação/limite de downloads, upload
   reverso por coleta, logs de download, download em **streaming** com nome original no zip) e
-  F2 (consentimento de acesso remoto **RustDesk** com compat AnyDesk + webhook n8n + ferramenta
-  `.bat` que o cliente baixa com 1 clique).
+  F2 (consentimento de acesso remoto **AnyDesk portátil** + webhook n8n opcional + ferramenta
+  `.bat` que o cliente baixa com 1 clique — sem instalar, sem admin).
 - **Deploy: arquitetura C (Docker único, 1 origem, sem CORS)** — porta **8081**, frontend servido
   pelo próprio app, banco Neon, `.dockerignore` + healthcheck no compose.
 - **Hospedagem: guia `docs/deploy-oracle.md`** — VM Oracle Cloud **Always Free** (app + Postgres
@@ -190,8 +198,11 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
   mas `application.properties` define `jwt.expiration` → a propriedade configurada **não tem efeito**.
 - `data/*.mv.db` (H2) está versionado por engano — não é usado quando `DATABASE_URL` está setada.
 - `JWT_SECRET` de produção deve ser aleatório (o atual é válido, 32 bytes, mas previsível).
-- Testes automatizados: apenas `NumpApplicationTests` (context load); o restante é coberto pelos
+- Testes automatizados: apenas `NumpApplicationTests` (context load) — **exige `JWT_SECRET`
+  definido** (`JWT_SECRET=... ./mvnw test`), senão o contexto não sobe. O restante é coberto pelos
   planos manuais em `docs/` (`roteiro-de-testes.md`, `plano-de-testes*.md`).
+- O `.bat` do F2 foi validado no nível do servidor (conteúdo/HTTP; fluxo completo com n8n
+  fora do ar) — a **execução em Windows real** ainda depende do roteiro manual em `docs/`.
 
 ## 9. Integração com n8n — como plugar (técnico)
 
@@ -211,8 +222,9 @@ consentimento de acesso remoto. **Pendente:** storage externo (S3/MinIO) no luga
 
 ## 10. Visão n8n / Roadmap — PARCIALMENTE IMPLEMENTADO
 
-> **Já saíram do papel (F1/F2):** consentimento de acesso remoto (item **A** — hoje **RustDesk**
-> com ferramenta `.bat` de 1 clique, compat AnyDesk via n8n), upload reverso/coleta e links
+> **Já saíram do papel (F1/F2):** consentimento de acesso remoto (item **A** — hoje **AnyDesk
+> portátil** com ferramenta `.bat` de 1 clique; dados de sessão via n8n quando configurado),
+> upload reverso/coleta e links
 > temporários (item **B**), revogação/expiração/auditoria (item **E**).
 > O que segue ainda é **ideia/plano**.
 
@@ -221,15 +233,15 @@ consentimento de acesso remoto. **Pendente:** storage externo (S3/MinIO) no luga
 
 Objetivo: **reduzir o tempo de atendimento técnico ao cliente**. Ideias priorizadas:
 
-### A. Link de liberação de acesso remoto (RustDesk; AnyDesk via n8n) — ideia central do autor ✅ (F2)
+### A. Link de liberação de acesso remoto (AnyDesk) — ideia central do autor ✅ (F2)
 1. Técnico abre um atendimento (form n8n / bot / ticket) → n8n gera um **link único e expirável**
    do Nump.
 2. Cliente recebe o link (WhatsApp/Telegram/e-mail) e em **1 clique** vê as instruções e
    **autoriza o acesso remoto** (endpoint Nump registra consentimento: timestamp, IP, user-agent).
-3. Após o aceite, a página do cliente mostra os dados da sessão e o botão **"Baixar ferramenta de
-   acesso (Windows)"** → `.bat` gerado pelo Nump (`/acessos/ferramenta/{token}.bat`) que baixa o
-   RustDesk oficial, aplica a senha temporária (do n8n ou gerada pelo Nump) e exibe o ID para o
-   técnico conectar. Se o n8n devolver `anydeskId`/`anydeskSenha`, a página também exibe (compat).
+3. Após o aceite, a página do cliente mostra o botão **"Baixar ferramenta de acesso (Windows)"** →
+   `.bat` gerado pelo Nump (`/acessos/ferramenta/{token}.bat`) que baixa o **AnyDesk portátil**
+   (sem instalar), exibe o ID e instrui o cliente a clicar em **"Aceitar"** quando o técnico
+   conectar. Se o n8n devolver `anydeskId`/`anydeskSenha`/`anydeskUrl`, a página também exibe.
 4. Link expira automaticamente (ex.: 15 min) e/ou após uso único.
 
 ### B. Envio/roteamento de arquivos ✅ parcial (F1)
@@ -258,7 +270,7 @@ Objetivo: **reduzir o tempo de atendimento técnico ao cliente**. Ideias prioriz
 3. ~~`WebhookPublisher` configurável por env (`N8N_WEBHOOK_URL`)~~ ✅ (best-effort).
 4. Storage plugável (S3/MinIO) para uploads — **pendente** (disco local não sobrevive ao Render).
 5. ~~Endpoint público de consentimento de acesso remoto~~ ✅ (F2: `/acessos/{token}/consentir`).
-6. ~~Ferramenta RustDesk para o cliente baixar com 1 clique~~ ✅ (F2: `/acessos/ferramenta/{token}.bat`).
+6. ~~Ferramenta AnyDesk para o cliente baixar com 1 clique~~ ✅ (F2: `/acessos/ferramenta/{token}.bat`).
 7. Triagem/roteamento por IA e bot de WhatsApp/Telegram — ainda plano.
 
 ## 11. Regras para a IA

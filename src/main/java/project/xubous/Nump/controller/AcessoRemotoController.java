@@ -65,7 +65,7 @@ public class AcessoRemotoController
                 .build ( );
     }
 
-    // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta RustDesk (rota pública).
+    // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta AnyDesk (rota pública).
     // O .bat é gerado na hora com a senha temporária da sessão já consentida.
     @GetMapping ( "/ferramenta/{token}.bat" )
     public ResponseEntity < byte [ ] > baixarFerramenta ( @PathVariable String token )
@@ -78,7 +78,7 @@ public class AcessoRemotoController
     }
 
     // POST /acessos/{token}/consentir — registra a autorização do cliente (rota pública).
-    // Devolve o que o n8n responder (ex.: ID/senha do RustDesk/AnyDesk) para a página exibir.
+    // Devolve o que o n8n responder (ex.: ID/senha do AnyDesk) para a página exibir.
     @PostMapping ( "/{token}/consentir" )
     public ResponseEntity < Map < String, Object > > consentir ( @PathVariable String token,
                                                                  @RequestBody ( required = false ) Map < String, Object > body,

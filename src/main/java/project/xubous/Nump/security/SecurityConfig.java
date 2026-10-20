@@ -57,7 +57,7 @@ public class SecurityConfig
                 .requestMatchers ( HttpMethod.POST, "/files/c/**" ).permitAll ()
                 // consentimento de acesso remoto (cliente, sem login) + página
                 // GET /acessos/{token} = página (1 segmento); POST .../consentir = grava;
-                // GET /acessos/ferramenta/{token}.bat = ferramenta RustDesk (2 segmentos).
+                // GET /acessos/ferramenta/{token}.bat = ferramenta AnyDesk (2 segmentos).
                 // A listagem GET /acessos (sem segmento) continua autenticada.
                 .requestMatchers ( HttpMethod.GET,  "/acessos/*", "/acessos/ferramenta/*",
                         "/consentimento.html" ).permitAll ()
