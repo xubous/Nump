@@ -40,7 +40,8 @@ public class Compactor
 
             zos.putNextEntry(entry);
 
-            byte[] buffer = new byte[1024];
+            // buffer de 8KB — bem mais rápido que 1KB em arquivos grandes
+            byte[] buffer = new byte[8192];
             int bytesRead;
 
             while ((bytesRead = inputStream.read(buffer)) != -1)

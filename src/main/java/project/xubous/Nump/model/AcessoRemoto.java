@@ -15,7 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Sessão de acesso remoto: link temporário em que o cliente autoriza o AnyDesk.
+// Sessão de acesso remoto: link temporário em que o cliente autoriza o acesso
+// (RustDesk, com compatibilidade AnyDesk via n8n).
 // Guarda a trilha de auditoria do consentimento (quem, quando, de qual IP/agente).
 @Entity
 @Table ( name = "table_acesso_remoto" )
@@ -45,4 +46,10 @@ public class AcessoRemoto
 
     @Column ( nullable = false )
     private String ownerEmail;
+
+    // ── Dados da sessão RustDesk (n8n ou fallback gerado pelo Nump) ──────────
+    // Colunas nullable: só preenchidas após o consentimento.
+    private String rustdeskId;          // ID do RustDesk (quando o n8n informa)
+    private String rustdeskSenha;       // senha temporária da sessão
+    private String rustdeskServer;      // servidor próprio (host:port), opcional
 }

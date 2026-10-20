@@ -1,7 +1,13 @@
 package project.xubous.Nump.controller;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -136,9 +142,10 @@ public class FileController
 
     // ── Download público ──────────────────────────────────────────────────────
 
-    // GET /files/r/{token} — rota pública, liberada no SecurityConfig
+    // GET /files/r/{token} — rota pública, liberada no SecurityConfig.
+    // Envia o zip em fluxo (streaming): não carrega o arquivo inteiro na RAM.
     @GetMapping ( "/r/{token}" )
-    public ResponseEntity < byte[] > download ( @PathVariable String token, HttpServletRequest request ) throws IOException
+    public ResponseEntity < Resource > download ( @PathVariable String token, HttpServletRequest request ) throws IOException
     {
         return fileService.getFileByToken ( token )
                 .map ( file ->
@@ -148,20 +155,24 @@ public class FileController
                         // valida link (expirado/revogado/limite) e incrementa contador
                         fileService.autorizarDownload ( file );
 
-                        byte[] bytes = fileService.readFileBytes ( file.getPath ( ) );
+                        Path caminho = Path.of ( file.getPath ( ) );
 
                         // registra log + webhook de confirmação de recebimento
                         fileService.registrarDownload ( file, ipDoRequest ( request ), request.getHeader ( "User-Agent" ) );
 
                         HttpHeaders headers = new HttpHeaders ( );
+                        headers.setContentLength ( Files.size ( caminho ) );
                         headers.setContentType ( MediaType.parseMediaType ( "application/zip" ) );
-                        headers.setContentDispositionFormData ( "attachment", "arquivo_" + token + ".zip" );
+                        // nome do zip preserva o nome original do arquivo (ex.: relatorio.zip)
+                        headers.setContentDisposition ( ContentDisposition.attachment ( )
+                                .filename ( fileService.nomeDownload ( file ), StandardCharsets.UTF_8 ).build ( ) );
 
-                        return ResponseEntity.ok ( ).headers ( headers ).body ( bytes );
+                        return ResponseEntity.ok ( ).headers ( headers )
+                                . < Resource > body ( new FileSystemResource ( caminho ) );
                     }
                     catch ( IOException e )
                     {
-                        return ResponseEntity.internalServerError ( ). < byte[] >build ( );
+                        return ResponseEntity.internalServerError ( ). < Resource > build ( );
                     }
                 } )
                 .orElse ( ResponseEntity.notFound ( ).build ( ) );

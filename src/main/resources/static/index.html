@@ -194,7 +194,7 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 }
 .btn-wpp:hover{background:rgba(34,197,94,.1)}
 
-/* ── ACESSO REMOTO (AnyDesk) ────────────────────────────────────── */
+/* ── ACESSO REMOTO (RustDesk) ───────────────────────────────────── */
 .remote-panel{padding:26px;margin-top:24px}
 .remote-panel h3{font-size:1.55rem;font-weight:700;margin-bottom:6px}
 .remote-panel .sub{color:var(--muted);font-size:.9rem;margin-bottom:20px}
@@ -329,11 +329,11 @@ body.light .acesso-card{background:#f9fafb}
 
   </section>
 
-  <!-- ACESSO REMOTO (AnyDesk) -->
+  <!-- ACESSO REMOTO (RustDesk) -->
   <section class="panel remote-panel" id="remote-panel" style="display:none">
     <span class="panel-eyebrow">Acesso remoto</span>
-    <h3>Atendimento AnyDesk</h3>
-    <p class="sub">Gere um link temporário para o cliente autorizar o acesso à máquina dele. O link expira sozinho e vence após o primeiro uso.</p>
+    <h3>Atendimento RustDesk</h3>
+    <p class="sub">Gere um link temporário para o cliente autorizar o acesso à máquina dele. O cliente baixa a ferramenta com 1 clique e o link vence após o primeiro uso.</p>
 
     <div class="remote-form">
       <input type="email" id="acesso-email" placeholder="E-mail do cliente (opcional)" autocomplete="off">
@@ -605,7 +605,7 @@ async function deleteFile(id, el) {
   }
 }
 
-// ── ACESSO REMOTO (AnyDesk) ─────────────────────────────────────────────────
+// ── ACESSO REMOTO (RustDesk) ────────────────────────────────────────────────
 const remotePanel = document.getElementById("remote-panel");
 const acessoEmail = document.getElementById("acesso-email");
 const acessoExp   = document.getElementById("acesso-exp");

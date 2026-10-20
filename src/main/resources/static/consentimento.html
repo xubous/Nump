@@ -105,6 +105,27 @@
       transition: .2s;
     }
     .copiar:hover { border-color: var(--main); }
+    .ferramenta {
+      display: block;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+      border-radius: 10px;
+      background: rgba(74, 222, 128, 0.12);
+      color: #4ade80;
+      font-size: .95rem;
+      font-weight: 700;
+      text-decoration: none;
+      text-align: center;
+      transition: .2s;
+    }
+    .ferramenta:hover { filter: brightness(1.15); }
+    .instrucao {
+      margin-top: 10px;
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -133,6 +154,14 @@
       <div class="linha muted">Guarde os dados abaixo para conectar:</div>
       <div id="dados-sessao"></div>
       <button class="copiar" id="copiarBtn" style="display:none">Copiar dados</button>
+      <a class="ferramenta" id="btnFerramenta" style="display:none" href="#">
+        <i class="fa-solid fa-download"></i> Baixar ferramenta de acesso (Windows)
+      </a>
+      <p class="instrucao" id="instrucao" style="display:none">
+        1. Execute o arquivo baixado (o Windows pode pedir autorização — clique em <b>Sim</b>).<br>
+        2. O RustDesk vai abrir já com autorização temporária.<br>
+        3. Copie o <b>ID</b> exibido e envie para o técnico. Pronto!
+      </p>
     </div>
   </main>
 
@@ -186,24 +215,34 @@
       });
     };
 
-    // Mostra o que o n8n devolveu (ID/senha do AnyDesk, etc.) ou um aviso genérico
+    // Mostra o que o n8n/Nump devolveu (ID/senha RustDesk ou AnyDesk) e o
+    // botão para baixar a ferramenta de acesso remoto (.bat gerado pelo Nump)
     function montarDados(data) {
       const n8n = data.n8n;
+      const rd  = data.rustdesk;
       let html = "";
       dadosParaCopiar = "";
 
+      // ── RustDesk (fluxo principal) ────────────────────────────────────────
+      if (rd) {
+        if (rd.id)    { html += linha("ID do RustDesk", rd.id); dadosParaCopiar += "ID: " + rd.id + "\n"; }
+        if (rd.senha) { html += linha("Senha", rd.senha);       dadosParaCopiar += "Senha: " + rd.senha + "\n"; }
+        if (rd.server){ html += linha("Servidor", rd.server);   dadosParaCopiar += "Servidor: " + rd.server + "\n"; }
+      }
+
+      // ── AnyDesk (compatibilidade: só se o n8n devolver) ───────────────────
       if (n8n) {
         // campos comuns que o n8n pode devolver
-        const id    = n8n.anydeskId    || n8n.anydesk_id    || n8n.id    || n8n.sessionId;
-        const senha = n8n.anydeskSenha || n8n.anydesk_senha || n8n.senha || n8n.password;
+        const id    = n8n.anydeskId    || n8n.anydesk_id;
+        const senha = n8n.anydeskSenha || n8n.anydesk_senha;
         const link  = n8n.anydeskUrl   || n8n.anydesk_url   || n8n.url;
 
-        if (id)    { html += linha("ID do AnyDesk", id);    dadosParaCopiar += "ID: " + id + "\n"; }
-        if (senha) { html += linha("Senha", senha);          dadosParaCopiar += "Senha: " + senha + "\n"; }
-        if (link)  { html += linha("Link", link);            dadosParaCopiar += "Link: " + link + "\n"; }
+        if (id)    { html += linha("ID do AnyDesk", id);    dadosParaCopiar += "ID AnyDesk: " + id + "\n"; }
+        if (senha) { html += linha("Senha AnyDesk", senha); dadosParaCopiar += "Senha AnyDesk: " + senha + "\n"; }
+        if (link)  { html += linha("Link", link);           dadosParaCopiar += "Link: " + link + "\n"; }
 
         // se veio algo que não reconhecemos, mostra o JSON cru
-        if (!id && !senha && !link) {
+        if (!rd && !id && !senha && !link) {
           html += `<div class="linha muted">Detalhes técnicos:</div>
                    <div class="linha" style="font-family:monospace;font-size:.8rem">${escapeHtml(JSON.stringify(n8n))}</div>`;
         }
@@ -216,6 +255,13 @@
 
       dadosEl.innerHTML = html;
       copiarBtn.style.display = dadosParaCopiar ? "inline-block" : "none";
+
+      // ferramenta RustDesk: sempre disponível após o consentimento
+      if (token) {
+        document.getElementById("btnFerramenta").style.display = "block";
+        document.getElementById("btnFerramenta").href = `/acessos/ferramenta/${token}.bat`;
+        document.getElementById("instrucao").style.display = "block";
+      }
     }
 
     function linha(rotulo, valor) {

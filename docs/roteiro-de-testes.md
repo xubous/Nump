@@ -111,9 +111,10 @@ Cole a URL numa **aba anônima**.
 
 ---
 
-## ▶ Passo 4 — 🖥️ Autorizar acesso remoto / AnyDesk (F2)
+## ▶ Passo 4 — 🖥️ Autorizar acesso remoto / RustDesk (F2)
 
-Aqui o **cliente autoriza o acesso** e você recebe os dados do AnyDesk.
+Aqui o **cliente autoriza o acesso**, recebe os dados da sessão e **baixa a ferramenta RustDesk**
+com 1 clique.
 
 ### 4.1 Crie a sessão e copie a URL
 
@@ -139,10 +140,11 @@ Cole numa **aba anônima**.
 1. (Opcional) Preencha o email e clique **"Autorizo o acesso remoto"**.
    - **Você deve ver:** vira **"Registrando autorização…"**
 2. O resultado aparece:
-   - **Sem n8n:** painel verde **"Acesso autorizado"** com os dados da sessão
-     (aviso "técnico avisado, aguarde").
-   - **Com n8n (Passo 5):** mostra **ID do AnyDesk, senha e link** + botão **"Copiar dados"**
-     (que vira **"Copiado!"** ao clicar) ✅
+   - **Sem n8n:** painel verde **"Acesso autorizado"** com a **senha RustDesk gerada pelo Nump**
+   - **Com n8n (Passo 5):** mostra **ID/senha do RustDesk** (ou **ID/senha do AnyDesk**)
+     + botão **"Copiar dados"** (que vira **"Copiado!"** ao clicar) ✅
+3. Sempre abaixo aparece o botão verde **"Baixar ferramenta de acesso (Windows)"**
+   + as instruções (executar → compartilhar o ID) ✅
 
 ### 4.4 Teste o uso único
 
@@ -156,8 +158,20 @@ Volte no seu painel / lista de sessões (`GET /acessos`).
 
 **Você deve ver:** a sessão como **CONSENTIDO**, com **data/hora e IP** gravados ✅
 
+### 4.6 Baixe a ferramenta RustDesk (`.bat`)
+
+Clique no botão **"Baixar ferramenta de acesso (Windows)"** (ou abra
+`http://localhost:8081/acessos/ferramenta/<TOKEN>.bat`).
+
+**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**; ao executar (num Windows), ele baixa o
+instalador oficial do RustDesk, instala, abre já **autorizado com a senha temporária** e mostra o
+**ID** na tela para você conectar ✅
+
+> Teste também **antes do consentimento** (token ainda PENDENTE): deve recusar com
+> **"Autorize o acesso antes de baixar a ferramenta"** ✅
+
 > 🎉 **Acabou de ver a F2 funcionando:** cliente autoriza → auditoria registrada →
-> dados do AnyDesk exibidos (com n8n).
+> ferramenta RustDesk baixada com 1 clique → dados exibidos (RustDesk e, com n8n, AnyDesk).
 
 ---
 
@@ -168,7 +182,7 @@ Aqui você valida a integração **de verdade** (o n8n já roda em `localhost:56
 | # | Passo | Esperado |
 |---|-------|----------|
 | 5.1 | No n8n, crie um workflow com nó **Webhook** e copie a URL (ex.: `http://localhost:5678/webhook/abc`) | URL copiada |
-| 5.2 | Ligue um nó **Respond to Webhook** devolvendo `{"anydeskId":"999","anydeskSenha":"xyz"}` e **ative** o workflow (toggle ON) | Workflow salvo e ativo |
+| 5.2 | Ligue um nó **Respond to Webhook** devolvendo `{"rustdeskId":"999","rustdeskSenha":"xyz"}` (ou `{"anydeskId":"999","anydeskSenha":"xyz"}`) e **ative** o workflow (toggle ON) | Workflow salvo e ativo |
 | 5.3 | Pare a app (`Ctrl+C`) e suba com a URL do webhook:<br>`JWT_SECRET=... N8N_WEBHOOK_URL=<URL_DO_WEBHOOK> ./mvnw spring-boot:run` | App no ar |
 | 5.4 | **Envie** um arquivo (Passo 2) | O Webhook dispara com `evento: arquivo_enviado` |
 | 5.5 | **Baixe** um arquivo | Dispara `arquivo_baixado` |

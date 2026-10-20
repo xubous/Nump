@@ -115,9 +115,21 @@ public class FileService
         return fileRepository.findByToken ( token );
     }
 
-    public byte[] readFileBytes ( String path ) throws IOException
+    // Nome do zip baixado: preserva o nome original do arquivo (ex.: relatorio.zip)
+    // e remove caracteres que quebrariam o header Content-Disposition.
+    public String nomeDownload ( File file )
     {
-        return Files.readAllBytes ( Path.of ( path ) );
+        String nome = file.getOriginalName ( ) != null ? file.getOriginalName ( ) : "arquivo";
+
+        int ponto = nome.lastIndexOf ( '.' );
+        if ( ponto > 0 )
+        {
+            nome = nome.substring ( 0, ponto );
+        }
+
+        nome = nome.replaceAll ( "[^a-zA-Z0-9._-]", "_" );
+
+        return nome.isBlank ( ) ? "arquivo.zip" : nome + ".zip";
     }
 
     // Valida o link e incrementa o contador de downloads (transacional)
