@@ -196,10 +196,13 @@ public class AcessoRemotoService
     // ── Ferramenta AnyDesk para o cliente baixar ─────────────────────────────
 
     // Gera o .bat que o cliente executa na máquina dele: baixa o AnyDesk
-    // portátil (sem instalar, sem pedir admin), abre e mostra o ID para o
-    // técnico conectar. Se o download automático falhar, o .bat tenta de novo
-    // com o curl nativo do Windows e, em último caso, abre a página oficial do
-    // AnyDesk no navegador — nunca deixa o cliente sem caminho.
+    // portátil (sem instalar, sem pedir admin), espera o AnyDesk conectar
+    // (repetindo --get-id até vir um ID válido) e mostra o ID para o técnico.
+    // O ID da JANELA do AnyDesk é a fonte da verdade — o .bat avisa para
+    // conferir lá, pois um ID capturado cedo demais não roteia.
+    // Se o download automático falhar, tenta de novo com o curl nativo do
+    // Windows e, em último caso, abre a página oficial no navegador —
+    // nunca deixa o cliente sem caminho.
     public String gerarFerramenta ( String token )
     {
         AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
@@ -237,15 +240,30 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  Abrindo o AnyDesk...\r\n" );
         bat.append ( "start \"\" \"%APP%\"\r\n" );
-        bat.append ( "timeout /t 8 >nul\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Aguardando o AnyDesk conectar ao servidor (pode levar uns segundos)...\r\n" );
+        bat.append ( "set \"ID=\"\r\n" );
+        bat.append ( "set /a TENTATIVAS=0\r\n" );
+        bat.append ( ":espera\r\n" );
+        bat.append ( "timeout /t 3 >nul\r\n" );
+        bat.append ( "set /a TENTATIVAS+=1\r\n" );
         bat.append ( "pushd \"%PASTA%\"\r\n" );
-        bat.append ( "for /f \"delims=\" %%i in ('AnyDesk.exe --get-id') do set \"ID=%%i\"\r\n" );
+        bat.append ( "for /f \"delims=\" %%i in ('AnyDesk.exe --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
         bat.append ( "popd\r\n" );
-        bat.append ( "if not defined ID goto idmanual\r\n" );
+        bat.append ( "if defined ID goto mostraid\r\n" );
+        bat.append ( "if %TENTATIVAS% LSS 15 goto espera\r\n" );
+        bat.append ( "goto idmanual\r\n" );
+        bat.append ( "\r\n" );
+        bat.append ( ":mostraid\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  --------------------------------------------\r\n" );
-        bat.append ( "echo   Compartilhe este ID com o tecnico: %ID%\r\n" );
+        bat.append ( "echo   ID do AnyDesk: %ID%\r\n" );
         bat.append ( "echo  --------------------------------------------\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  IMPORTANTE: confira na JANELA do AnyDesk.\r\n" );
+        bat.append ( "echo  Se a janela mostrar outro ID, e o da janela\r\n" );
+        bat.append ( "echo  que vale - envie o ID da janela ao tecnico.\r\n" );
+        bat.append ( "echo  So envie o ID quando parar de dizer \"Conectando\".\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  Mantenha o AnyDesk aberto. Quando o tecnico\r\n" );
         bat.append ( "echo  conectar, clique em \"Aceitar\" para liberar.\r\n" );
@@ -255,13 +273,14 @@ public class AcessoRemotoService
         bat.append ( "\r\n" );
         bat.append ( ":idmanual\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  --------------------------------------------\r\n" );
-        bat.append ( "echo   Abra a janela do AnyDesk e envie ao tecnico\r\n" );
-        bat.append ( "echo   o ID grande exibido no topo da tela.\r\n" );
-        bat.append ( "echo  --------------------------------------------\r\n" );
+        bat.append ( "echo  O AnyDesk ainda nao mostrou o ID aqui. Faca assim:\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Mantenha o AnyDesk aberto e clique em \"Aceitar\"\r\n" );
-        bat.append ( "echo  quando o tecnico conectar.\r\n" );
+        bat.append ( "echo  1. Aguarde a janela do AnyDesk terminar de carregar\r\n" );
+        bat.append ( "echo     (pare de exibir \"Conectando\").\r\n" );
+        bat.append ( "echo  2. Envie ao tecnico o ID grande exibido no topo\r\n" );
+        bat.append ( "echo     da JANELA do AnyDesk.\r\n" );
+        bat.append ( "echo  3. Mantenha o AnyDesk aberto e clique em \"Aceitar\"\r\n" );
+        bat.append ( "echo     quando o tecnico conectar.\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );
@@ -273,7 +292,7 @@ public class AcessoRemotoService
         bat.append ( "start \"\" \"" + url + "\"\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  1. Salve o AnyDesk.exe e abra-o (nao precisa instalar).\r\n" );
-        bat.append ( "echo  2. Envie ao tecnico o ID grande exibido no topo.\r\n" );
+        bat.append ( "echo  2. Envie ao tecnico o ID grande exibido no topo da janela.\r\n" );
         bat.append ( "echo  3. Mantenha o AnyDesk aberto e clique em \"Aceitar\"\r\n" );
         bat.append ( "echo     quando o tecnico conectar.\r\n" );
         bat.append ( "echo.\r\n" );
