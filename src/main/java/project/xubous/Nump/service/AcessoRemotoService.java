@@ -249,8 +249,8 @@ public class AcessoRemotoService
 
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
-        bat.append ( "chcp 65001 >nul\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
+        bat.append ( "setlocal enableextensions\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo   Atendimento remoto seguro - Nump\r\n" );
@@ -261,10 +261,10 @@ public class AcessoRemotoService
         bat.append ( "set \"SENHA=\"\r\n" );
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
         bat.append ( "echo  Buscando a senha de atendimento no servidor...\r\n" );
-        bat.append ( "for /f \"delims=\" %%s in ('curl -s -L \"" + urlSenha + "\"') do if not defined SENHA set \"SENHA=%%s\"\r\n" );
-        bat.append ( "if not defined SENHA (\r\n" );
-        bat.append ( "  for /f \"delims=\" %%s in ('powershell -NoProfile -Command \"(Invoke-RestMethod -Uri '\" + urlSenha + \"' -UseBasicParsing).senha\"') do if not defined SENHA set \"SENHA=%%s\"\r\n" );
-        bat.append ( ")\r\n" );
+        // Busca a senha: PowerShell é mais confiável aqui do que o for /f sobre o
+        // curl (evita problemas de aspas aninhadas). O curl continua como plano B.
+        bat.append ( "for /f \"usebackq delims=\" %%s in (`powershell -NoProfile -ExecutionPolicy Bypass -Command \"try{(Invoke-RestMethod -Uri '" + urlSenha + "' -UseBasicParsing).senha}catch{}\"`) do if not defined SENHA set \"SENHA=%%s\"\r\n" );
+        bat.append ( "if not defined SENHA for /f \"delims=\" %%s in ('curl -s -L \"" + urlSenha + "\"') do if not defined SENHA set \"SENHA=%%s\"\r\n" );
         bat.append ( "if not defined SENHA goto falhasenha\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
