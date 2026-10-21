@@ -240,6 +240,28 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
   color:var(--muted);font-size:.78rem;line-height:1.5
 }
 .acesso-audit i{color:var(--success);margin-right:5px}
+/* Bloco com os dados da sessão (ID + senha do RustDesk) para o técnico copiar */
+.acesso-dados{
+  margin-top:10px;padding:12px;border-radius:var(--radius-sm);
+  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.22)
+}
+.acesso-dados .dado{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-size:.85rem;padding:3px 0
+}
+.acesso-dados .dado .rotulo{color:var(--muted);min-width:96px}
+.acesso-dados .dado .valor{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+  letter-spacing:.04em;color:var(--text);word-break:break-all
+}
+.acesso-dados .dado .btn-mini{
+  padding:5px 10px;border:1px solid var(--border);border-radius:6px;
+  background:transparent;color:var(--muted);font-size:.75rem;font-weight:600;
+  cursor:pointer;transition:.2s;flex-shrink:0
+}
+.acesso-dados .dado .btn-mini:hover{border-color:var(--success);color:var(--success)}
+.acesso-dados .dado .btn-mini.ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:var(--success)}
+.acesso-dados .copia-tudo{margin-top:8px;width:100%}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:2.2rem;margin-bottom:10px;display:block;opacity:.5}
@@ -680,7 +702,42 @@ function buildAcessoCard(a) {
     <div class="acesso-audit">
       <i class="fa-solid fa-shield-halved"></i>
       Autorizado em ${fmtDataHora(a.consentAt)}${a.consentIp ? " · IP " + escapeAttr(a.consentIp) : ""}
+    </div>` : ""}
+    ${statusCls === "consentido" && (a.rustdeskId || a.rustdeskSenha) ? `
+    <div class="acesso-dados">
+      <div class="dado"><span class="rotulo">ID RustDesk:</span>
+        <span class="valor" id="rd-id-${a.id}">${a.rustdeskId ? escapeHtml(a.rustdeskId) : "— (o script mostra na tela do cliente)"}</span>
+        ${a.rustdeskId ? `<button class="btn-mini" data-alvo="rd-id-${a.id}">Copiar</button>` : ""}
+      </div>
+      <div class="dado"><span class="rotulo">Senha:</span>
+        <span class="valor" id="rd-senha-${a.id}">${a.rustdeskSenha ? escapeHtml(a.rustdeskSenha) : "—"}</span>
+        ${a.rustdeskSenha ? `<button class="btn-mini" data-alvo="rd-senha-${a.id}">Copiar</button>` : ""}
+      </div>
+      ${a.rustdeskServer ? `
+      <div class="dado"><span class="rotulo">Servidor:</span>
+        <span class="valor" id="rd-srv-${a.id}">${escapeHtml(a.rustdeskServer)}</span>
+        <button class="btn-mini" data-alvo="rd-srv-${a.id}">Copiar</button>
+      </div>` : ""}
+      <button class="btn-mini copia-tudo" data-tudo="1">Copiar tudo (ID + senha)</button>
     </div>` : ""}`;
+
+  // ── Botões de copiar dos dados da sessão (ID/senha/servidor) ────────────
+  const dadosEl = li.querySelector(".acesso-dados");
+  if (dadosEl) {
+    dadosEl.querySelectorAll(".btn-mini[data-alvo]").forEach(btn => {
+      btn.onclick = async function() {
+        await copiarTexto(document.getElementById(btn.dataset.alvo).textContent.trim(), btn);
+      };
+    });
+    const btnTudo = dadosEl.querySelector(".btn-mini[data-tudo]");
+    if (btnTudo) btnTudo.onclick = async function() {
+      let txt = "";
+      if (a.rustdeskId)     txt += "ID RustDesk: " + a.rustdeskId + "\n";
+      if (a.rustdeskSenha)  txt += "Senha: " + a.rustdeskSenha + "\n";
+      if (a.rustdeskServer) txt += "Servidor: " + a.rustdeskServer + "\n";
+      await copiarTexto(txt, btnTudo);
+    };
+  }
 
   const consentUrl = a.consentUrl || "";
 
@@ -756,6 +813,30 @@ function fmtDataHora(iso) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
+// Copia texto para a área de transferência e dá feedback no próprio botão.
+// Usa a API moderna e, se falhar (contexto não seguro), cai no textarea.
+async function copiarTexto(txt, btn) {
+  if (!txt) return;
+  try {
+    await navigator.clipboard.writeText(txt);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = txt;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch {}
+    ta.remove();
+  }
+  if (btn) {
+    const original = btn.textContent;
+    btn.textContent = "Copiado!";
+    btn.classList.add("ok");
+    setTimeout(() => { btn.textContent = original; btn.classList.remove("ok"); }, 1500);
+  }
+}
+
 function escapeHtml(t) {
   return String(t).replace(/[&<>"']/g, c =>
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
