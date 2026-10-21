@@ -245,42 +245,14 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        // URL do script PowerShell (rota pública). O .bat fica curto de propósito:
-        // a versão anterior embutia o script em base64 numa linha só e o cmd
-        // estourava com "A linha de entrada é muito longa" e não fazia nada.
+        // URL do script PowerShell (rota pública). Roda tudo direto pelo PowerShell
+        // pra evitar janelas desnecessárias do cmd (estilo AnyDesk).
         String baseUrl = appBaseUrl;
         String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
-        bat.append ( "title Atendimento remoto - Nump\r\n" );
-        bat.append ( "chcp 65001 >nul\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  ============================================\r\n" );
-        bat.append ( "echo   Atendimento remoto seguro - Nump\r\n" );
-        bat.append ( "echo  ============================================\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  O Windows vai pedir permissao de administrador.\r\n" );
-        bat.append ( "echo  Clique em SIM e aguarde a configuracao terminar.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "set \"PS1=%TEMP%\\nump_atendimento.ps1\"\r\n" );
-        bat.append ( "echo  Baixando o script de atendimento...\r\n" );
-        bat.append ( "curl -L -s -o \"%PS1%\" \"" + psUrl + "\"\r\n" );
-        // fallback: se o curl falhar, tenta de novo pelo PowerShell
-        bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
-        bat.append ( "if not exist \"%PS1%\" goto sempoder\r\n" );
-        // Eleva e fecha o .bat na hora: só a janela elevada fica visível.
-        // O cliente clica 1x em "Sim" no UAC e acompanha pelo PowerShell elevado.
-        bat.append ( "start \"\" powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File','\"\"%PS1%\"\"'; Remove-Item -Path '\"\"%PS1%\"\"' -Force -ErrorAction SilentlyContinue\"\r\n" );
+        bat.append ( "powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$p=Join-Path $env:TEMP 'nump_atendimento.ps1';try{curl.exe -L -s -o $p '" + psUrl + "'}catch{};if(-not (Test-Path $p)){try{Invoke-WebRequest -Uri '" + psUrl + "' -OutFile $p -UseBasicParsing}catch{}};if(Test-Path $p){Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File',('\"'+$p+'\"')}else{Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-Command','Write-Host \"Nao foi possivel baixar o script de atendimento.\" -ForegroundColor Red; Write-Host \"Baixe o RustDesk manualmente em https://rustdesk.com\" -ForegroundColor Yellow; Start-Sleep -Seconds 10'}\"\r\n" );
         bat.append ( "exit\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":sempoder\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Nao foi possivel baixar o script de atendimento.\r\n" );
-        bat.append ( "echo  Baixe o RustDesk em https://rustdesk.com, instale,\r\n" );
-        bat.append ( "echo  abra e informe o codigo de acesso ao tecnico.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "pause\r\n" );
-        bat.append ( "exit /b 1\r\n" );
 
         return bat.toString ( );
     }
