@@ -185,13 +185,19 @@ colar no RustDesk; a senha temporária já está aplicada (acesso não atendido)
 > **Uma execução só:** antes o `.bat` se reexecutava sem esperar e a janela do cliente fechava,
 > dando a impressão de "rodar 2 vezes". Agora é 1 clique no UAC e 1 janela de trabalho.
 
-> ⚠️ **Dois bugs corrigidos em 2026-10-21 (o "nada acontecia"):**
+> ⚠️ **Três bugs corrigidos em 2026-10-21 (o "nada acontecia"):**
 > 1. O `.bat` antigo embutia o script PowerShell em **base64 numa linha única** e o `cmd` falhava
 >    com *"A linha de entrada é muito longa"* antes de fazer qualquer coisa. Agora o `.bat` é curto e
 >    só baixa o script.
 > 2. `Start-Process rustdesk.exe --password ... -Wait` **travava para sempre** se já houvesse um
 >    RustDesk aberto (o processo novo "cola" na instância viva). Agora fecha instâncias antes e usa
 >    **timeout**.
+> 3. O `script.ps1` usava **`goto`** — que **não existe em PowerShell**. O cliente via
+>    *"O termo 'goto' não é reconhecido..."* e o script abortava. Agora o fluxo é
+>    **`try/catch/finally`**: o erro real aparece (`Detalhe: ...`) e a janela **fecha sozinha em 15 s**.
+>
+> ⚠️ **A elevação (UAC) não dá para automatizar** — é fronteira de segurança do Windows. O cliente
+> sempre clica **1x em "Sim"**; todo o resto roda sem interação.
 
 **No fim do atendimento**, o cliente escolhe na página:
 

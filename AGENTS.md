@@ -142,6 +142,10 @@ src/main/resources/
 > janela** segue. ⚠️ A versão anterior **embutia o script em base64 numa linha única** e o `cmd`
 > estourava com *"A linha de entrada é muito longa"* — no cliente **nada acontecia** (corrigido em
 > 2026-10-21). O `.bat` atual só faz **uma** chamada: baixar o script.
+> ⚠️ **PowerShell não tem `goto`** — a versão anterior usava `goto falha`/`:fim` e o cliente via o
+> erro *"O termo 'goto' não é reconhecido..."* (o script abortava). O fluxo agora usa
+> **`try/catch/finally`**: o `catch` mostra o motivo da falha (`$_.Exception.Message`) e o `finally`
+> **sempre** exibe o resumo e fecha a janela **sozinha em 15 s** (sem "Pressione ENTER").
 > O PowerShell então:
 > 1. **Detecta o RustDesk já instalado** (procura `rustdesk.exe` em Program Files / x86 / LocalAppData
 >    e em `Programs\RustDesk`) — se existir, **pula download e instalação** (tratativa para máquinas
@@ -272,6 +276,15 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
   `cmd.exe` real, `script.ps1` com o parser oficial (`PARSE OK`) e o ID é lido da máquina real.
   ⚠️ A aplicação da senha/`--install-service` exige **UAC** (o serviço roda como **LocalSystem**), então
   a validação end-to-end completa depende do roteiro manual em `docs/`.
+- **Fix `goto` no PowerShell (2026-10-21):** o `script.ps1` usava `goto falha`/`:fim` — **PowerShell
+  não tem `goto`** (é coisa de `cmd`), então o cliente via o erro *"O termo 'goto' não é reconhecido..."*
+  e o script abortava. Reescrito com **`try/catch/finally`**: `$ok`/`$id` declarados fora do `try`, o
+  `catch` mostra `$_.Exception.Message` (motivo real da falha) e o `finally` **sempre** exibe o resumo e
+  **fecha a janela sozinha em 15 s** (fim do "Pressione ENTER" — o cliente não precisa interagir com a
+  janela). Os `goto` que restam no arquivo são **só dos `.bat`** (sintaxe válida do `cmd`).
+  ⚠️ **A elevação (UAC) não tem como ser automatizada** — é fronteira de segurança do Windows; o cliente
+  sempre clica **1x em "Sim"**. O que dá pra minimizar (e foi feito) é o resto: 1 clique no download do
+  `.bat` dispara tudo, sem confirmações extras e sem janelas penduradas.
 - **Painel (2026-10-21, atualizado):** o card **Autorizado** mostra o **Código de acesso (ID)** em
   destaque (`.acesso-id-box`) com botão **Copiar ID**, atualizado **sozinho** por polling de 4 s
   (`iniciarAutoAtualizacao`) — o ID aparece no painel assim que o script do cliente o envia, com pulso
