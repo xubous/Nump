@@ -128,26 +128,40 @@ src/main/resources/
 | DELETE | `/acessos/{id}` | autenticado (dono) → cancela se pendente |
 | GET | `/acessos/{token}` | **público** → redirect `/consentimento.html` |
 | POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e o `ferramentaToken` (uso único), lê o ID do RustDesk do n8n (opcional) |
-| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": **uma execução só** — grava um PowerShell embutido (base64→`certutil`) e o roda **elevado com `-Wait`** (1 clique no UAC, mesma janela). O PowerShell baixa o **RustDesk RÁPIDO** (curl com progresso; BITS/`Invoke-WebRequest` de fallback), instala em silêncio (`--silent-install`), garante o serviço (`--install-service`) e aplica a **senha** (`--password`); depois abre o RustDesk, lê o **ID** (`--get-id`) e **copia o ID para a área de transferência** |
+| GET | `/acessos/ferramenta/{token}.bat` | **público** → baixa o `.bat` "Suporte Nump" **curto**: baixa o script PowerShell do Nump (`/acessos/ferramenta/{token}/script.ps1`) e o roda **elevado com `Start-Process -Verb RunAs -Wait`** (1 clique no UAC, mesma janela). Ficou curto de propósito: a versão anterior embutia o script em base64 numa linha só e o `cmd` falhava com *"A linha de entrada é muito longa"* (nada acontecia na máquina do cliente) — corrigido em 2026-10-21 |
+| GET | `/acessos/ferramenta/{token}/script.ps1` | **público** → PowerShell gerado na hora. **Detecta RustDesk já instalado** (pula download/instalação); senão baixa (curl/BITS/`Invoke-WebRequest`) e instala em silêncio; fecha instâncias abertas e aplica serviço + senha com **timeout** (não trava mais no `--password -Wait`); reinicia o serviço; abre o RustDesk, lê o **ID** (`--get-id`), copia para o clipboard e **envia ao Nump** |
+| POST | `/acessos/ferramenta/{token}/id` | **público** → o script envia o ID descoberto (`{ "rustdeskId": "..." }`). O ID vira **autoritativo** (sobrescreve o do n8n, se houver) e marca `ferramentaUsadaEm` (auditoria) — o painel do técnico mostra o código de acesso **sem o cliente digitar nada** |
 | GET | `/acessos/ferramenta/{fToken}/senha` | **público** → troca o `ferramentaToken` pela senha em texto puro (legado — o `.bat` atual **não** usa mais; ficou do endurecimento de 2026-10-20) |
 | GET | `/acessos/{token}/encerrar.bat` | **público** → `.bat` "Encerrar atendimento": o cliente roda ao fim para **REVOGAR o acesso** (limpa a senha, `--uninstall-service`, mata o processo) **mantendo o RustDesk instalado** — para máquinas que serão acessadas de novo |
 | GET | `/acessos/{token}/desinstalar.bat` | **público** → `.bat` "Desinstalar RustDesk": **remove o RustDesk por completo** (`rustdesk.exe --uninstall`, flag oficial conferida no atalho do instalador) + limpa as pastas de dados que o desinstalador deixa para trás (AppData/LocalAppData/ProgramData/systemprofile). Exige admin (auto-eleva via UAC). Para máquinas com pouco acesso remoto |
 
-> **Fluxo RustDesk (F2) — acesso NÃO ATENDIDO:** o `.bat` (`Suporte Nump.bat`) **roda UMA vez só**:
-> grava um script PowerShell embutido (base64 → `certutil -decode`) em `%TEMP%` e o abre **elevado
-> com `Start-Process ... -Verb RunAs -Wait`** — o cliente clica **1x em "Sim"** no UAC e a **mesma
-> janela** segue (a original espera a elevada terminar; antes, sem `-Wait`, a janela fechava e
-> parecia exigir "rodar 2 vezes" — corrigido em 2026-10-21).
-> O PowerShell baixa o instalador oficial (`app.rustdesk.download-url`, default RustDesk **1.5.0**;
-> env `RUSTDESK_DOWNLOAD_URL`) com **`curl -L --progress-bar`** (rápido + feedback); sem `curl`, cai
-> para **BITS** e depois **`Invoke-WebRequest`**. Instala em silêncio (`--silent-install`), garante o
-> serviço (`--install-service`) e aplica a senha (`--password`) — ⚠️ o `--silent-install` **ignora**
-> `--password` (bug conhecido do RustDesk), por isso a senha é aplicada depois, no exe já instalado.
-> No fim abre o RustDesk, lê o ID (`--get-id`, com retry) e **copia o ID para a área de transferência**.
+> **Fluxo RustDesk (F2) — acesso NÃO ATENDIDO + ID automático:** o `.bat` (`Suporte Nump.bat`) é
+> **curto e roda UMA vez só**: baixa o PowerShell do Nump pela rota pública
+> `/acessos/ferramenta/{token}/script.ps1` e o abre **elevado com
+> `Start-Process ... -Verb RunAs -Wait`** — o cliente clica **1x em "Sim"** no UAC e a **mesma
+> janela** segue. ⚠️ A versão anterior **embutia o script em base64 numa linha única** e o `cmd`
+> estourava com *"A linha de entrada é muito longa"* — no cliente **nada acontecia** (corrigido em
+> 2026-10-21). O `.bat` atual só faz **uma** chamada: baixar o script.
+> O PowerShell então:
+> 1. **Detecta o RustDesk já instalado** (procura `rustdesk.exe` em Program Files / x86 / LocalAppData
+>    e em `Programs\RustDesk`) — se existir, **pula download e instalação** (tratativa para máquinas
+>    que já têm o programa); senão baixa o instalador oficial (`app.rustdesk.download-url`, default
+>    RustDesk **1.5.0**; env `RUSTDESK_DOWNLOAD_URL`) com **`curl -L --progress-bar`** (rápido +
+>    feedback); sem `curl`, cai para **BITS** e depois **`Invoke-WebRequest`**, e instala em silêncio
+>    (`--silent-install`).
+> 2. **Fecha instâncias abertas** do RustDesk antes de configurar e aplica serviço (`--install-service`)
+>    + senha (`--password`) usando um runner **com timeout** (`RodarRustDesk`) — ⚠️ `Start-Process
+>    --password -Wait` **travava para sempre** quando já havia um RustDesk aberto (o processo novo
+>    "cola" na instância viva e não retorna); era o bug do "nada acontece" mesmo depois do UAC.
+>    Depois **reinicia o serviço** (`Restart-Service RustDesk`) para a senha valer no processo do
+>    serviço (que roda como **LocalSystem** — a senha só grava elevada).
+> 3. Abre o RustDesk, lê o **ID** (`--get-id`, com retry), **copia para a área de transferência** e
+>    **envia ao Nump** (`POST /acessos/ferramenta/{token}/id`) → o **painel do técnico mostra o código
+>    de acesso sozinho** (auto-refresh de 4 s + aviso), **sem o cliente digitar nada**.
 > ⚠️ A tentativa de buscar a senha no servidor em runtime (endpoint `/senha`, 2026-10-20) foi
-> **revertida** no commit `be863e9`: dependia de rede/`APP_BASE_URL` no PC do cliente e quebrava
-> o script antes mesmo do download. O `.bat` atual (**e o PowerShell que ele gera**) não faz nenhuma
-> chamada além do download.
+> **revertida** no commit `be863e9` (dependia de rede/`APP_BASE_URL` no PC do cliente); hoje o único
+> acesso do script ao servidor é o envio do ID, que é **best-effort** (se falhar, o ID só aparece na
+> tela do cliente).
 > Resultado: o técnico conecta **direto com ID + senha**, sem o cliente aceitar a conexão.
 > **No fim do atendimento**, o cliente tem dois botões: **Encerrar atendimento**
 > (`/acessos/{token}/encerrar.bat`) **revoga o acesso** (limpa a senha, `--uninstall-service`, mata o
@@ -157,10 +171,14 @@ src/main/resources/
 > remoto. Enquanto nada for rodado, o acesso continua ativo (a senha do RustDesk não expira sozinha).
 > A senha é **sempre gerada pelo Nump** (SecureRandom 12 chars, sem 0/O/1/I) no consentimento —
 > a senha do n8n é ignorada de propósito. O n8n pode informar `rustdeskId`/`rustdeskServer`
-> (aceita `anydeskId` como alias) e é opcional: **sem n8n o script descobre o ID localmente**.
-> No painel, o card **Autorizado** exibe **ID/senha/servidor** com botões **Copiar** (+ "Copiar
-> tudo") — o técnico não digita o ID à mão. Os botões destrutivos ficam em **linha própria**
-> (`.acesso-acoes`) para não confundir com o botão de WhatsApp ao lado.
+> (aceita `anydeskId` como alias) e é opcional: **sem n8n o script descobre o ID localmente** (e o
+> ID descoberto **sobrescreve** o do n8n, porque é o valor real da máquina).
+> No painel, o card **Autorizado** mostra o **Código de acesso (ID)** em destaque (`.acesso-id-box`,
+> que vira verde `tem-id` quando chega) com botão **Copiar ID**, atualizado **automaticamente** por
+> **polling a cada 4 s** (`iniciarAutoAtualizacao`) — o card é reconstruído no lugar quando o status
+> muda e ganha um pulso visual + aviso sonoro quando o ID chega. Senha/servidor continuam com
+> **Copiar** (a senha é secundária: o técnico conecta pelo **ID**). Os botões destrutivos ficam em
+> **linha própria** (`.acesso-acoes`) para não confundir com o botão de WhatsApp ao lado.
 
 ### Fluxo de upload
 1. `Shortener.generateToken()` → token de 8 chars (UUID truncado).
@@ -175,12 +193,13 @@ src/main/resources/
   `/style.css`, `/login.css`, `/favicon.ico` — a API continua protegida por JWT.
 - Rotas públicas: `OPTIONS /**`, `POST /users/register`, `POST /users/login`, `GET /files/r/**`,
   `GET|POST /files/c/**` (coleta), `GET /acessos/{token}`, `POST /acessos/{token}/consentir`,
-  `GET /acessos/ferramenta/**` (ferramenta RustDesk + senha de uso único),
+  `GET /acessos/ferramenta/*` e `/acessos/ferramenta/*/*` (ferramenta RustDesk + script + senha de
+  uso único), `POST /acessos/ferramenta/*/id` (o script avisa o ID descoberto),
   `GET /acessos/*/*.bat` (encerrar atendimento + desinstalar RustDesk), `GET /actuator/health`.
 - ⚠️ **Armadilha do Spring Security 6:** `"/acessos/**"` **também casa com `/acessos`** (PathPattern),
   o que liberaria a **listagem de sessões** anonimamente. Por isso os padrões de `/acessos` são
-  **explícitos** (`/acessos/*`, `/acessos/*/*.bat`, `/acessos/ferramenta/*`, `/acessos/ferramenta/*/*`)
-  — nunca use `/acessos/**` ali.
+  **explícitos** (`/acessos/*`, `/acessos/*/*.bat`, `/acessos/ferramenta/*`, `/acessos/ferramenta/*/*`,
+  `POST /acessos/ferramenta/*/id`) — nunca use `/acessos/**` ali.
 - Admin: `GET /users`, `DELETE /users/**`.
 - **Arquitetura C (Docker único):** frontend e API são **mesma origem** → CORS não é usado no
   fluxo real. A config de CORS ainda lista origens (legado do Vercel, já aposentado) — pode ser simplificada.
@@ -241,13 +260,24 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
   acesso remoto). Ambos exigem consentimento (token PENDENTE → 410) e o desinstalar auto-eleva via UAC.
   **A senha do RustDesk não expira sozinha** — sem rodar nenhum dos dois, o acesso continua válido
   enquanto o RustDesk estiver instalado.
-- **`.bat` de UMA execução (2026-10-21):** o `Suporte Nump.bat` grava um PowerShell embutido
-  (base64 → `certutil -decode`) e o roda elevado com `Start-Process -Verb RunAs -Wait`. Antes o `.bat`
-  se reexecutava **sem** `-Wait`, a janela do cliente fechava e parecia exigir "rodar 2 vezes".
-  Validado no cmd real (Windows) e o PowerShell com o parser oficial (`PARSE OK`).
-- **Painel (2026-10-21):** o card **Autorizado** mostra ID/senha/servidor com botões **Copiar** (+
-  "Copiar tudo"); os botões destrutivos ficam em **linha própria** (`.acesso-acoes`) com
-  `stopPropagation` — corrige o clique errado que abria o WhatsApp ao lado.
+- **`.bat` de UMA execução + ID automático (2026-10-21):** o `Suporte Nump.bat` é **curto**: baixa o
+  PowerShell do Nump (`GET /acessos/ferramenta/{token}/script.ps1`) e o roda elevado com
+  `Start-Process -Verb RunAs -Wait`. Antes (a) o script ia embutido em base64 numa **linha única** e o
+  `cmd` falhava com *"A linha de entrada é muito longa"* — **nada acontecia** no cliente; e (b) o
+  `--password -Wait` **travava para sempre** se já houvesse um RustDesk aberto. Corrigido: `.bat` só
+  baixa o script, o PowerShell **detecta RustDesk já instalado**, fecha instâncias abertas e usa um
+  runner **com timeout** (`RodarRustDesk`) + `Restart-Service`. O script lê o ID (`--get-id`) e o
+  **envia ao Nump** (`POST /acessos/ferramenta/{token}/id`) — campo `rustdeskId` vira **autoritativo**
+  (sobrescreve o do n8n) e `ferramentaUsadaEm` é marcado (auditoria). Validado: `.bat` roda no
+  `cmd.exe` real, `script.ps1` com o parser oficial (`PARSE OK`) e o ID é lido da máquina real.
+  ⚠️ A aplicação da senha/`--install-service` exige **UAC** (o serviço roda como **LocalSystem**), então
+  a validação end-to-end completa depende do roteiro manual em `docs/`.
+- **Painel (2026-10-21, atualizado):** o card **Autorizado** mostra o **Código de acesso (ID)** em
+  destaque (`.acesso-id-box`) com botão **Copiar ID**, atualizado **sozinho** por polling de 4 s
+  (`iniciarAutoAtualizacao`) — o ID aparece no painel assim que o script do cliente o envia, com pulso
+  visual + aviso sonoro. Senha/servidor são secundários (botão **Copiar**); os botões destrutivos ficam
+  em **linha própria** (`.acesso-acoes`) com `stopPropagation` — corrige o clique errado que abria o
+  WhatsApp ao lado.
 - Testes automatizados: apenas `NumpApplicationTests` (context load) — **exige `JWT_SECRET`
   definido** (`JWT_SECRET=... ./mvnw test`), senão o contexto não sobe. O restante é coberto pelos
   planos manuais em `docs/` (`roteiro-de-testes.md`, `plano-de-testes*.md`).

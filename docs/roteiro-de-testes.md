@@ -144,7 +144,8 @@ Cole numa **aba anônima**.
    - **Sem n8n:** painel verde **"Acesso autorizado"** com a **senha RustDesk gerada pelo Nump**
    - **Com n8n (Passo 5):** mostra **ID/senha do RustDesk** + botão **"Copiar dados"** ✅
 3. Sempre abaixo aparece o botão verde **"Baixar ferramenta de acesso (Windows)"**
-   + as instruções (executar → clicar em "Sim" no UAC → compartilhar o ID) ✅
+   + as instruções (executar → clicar em "Sim" no UAC — o **código de acesso vai ao técnico sozinho**,
+   o cliente **não precisa digitar nem copiar nada**) ✅
 
 ### 4.4 Teste o uso único
 
@@ -163,17 +164,34 @@ Volte no seu painel / lista de sessões (`GET /acessos`).
 Clique no botão **"Baixar ferramenta de acesso (Windows)"** (ou abra
 `http://localhost:8081/acessos/ferramenta/<TOKEN>.bat`).
 
-**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**. Ao executar (num Windows) ele
-**roda UMA vez só**: o `.bat` grava um script PowerShell embutido e o abre **elevado** com
-`-Wait` — você clica **1x em "Sim"** no UAC e a **mesma janela** segue mostrando o progresso.
-O PowerShell baixa o RustDesk rápido (`curl` com barra de progresso; BITS/`Invoke-WebRequest`
-como fallback), instala em silêncio, garante o serviço (`--install-service`) e aplica a
-**senha temporária** (`--password`). No fim ele abre o RustDesk, lê o **ID** (`--get-id`),
-**copia o ID para a área de transferência** e mostra na tela. O técnico conecta com esse ID e a
-senha — **sem o cliente aceitar nada** ✅
+**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`** (pequeno, ~1 KB). Ao executar (num Windows)
+ele **roda UMA vez só**: baixa o script PowerShell do próprio Nump
+ (`/acessos/ferramenta/<TOKEN>/script.ps1`) e o abre **elevado** com `-Wait` — você clica
+**1x em "Sim"** no UAC e a **mesma janela** segue mostrando o progresso. O PowerShell então:
+
+1. **Detecta se o RustDesk já está instalado** — se sim, **pula download/instalação** ✅
+   (senão baixa rápido com `curl`/BITS/`Invoke-WebRequest` e instala em silêncio).
+2. Fecha instâncias abertas, aplica o serviço (`--install-service`) e a **senha temporária**
+   (`--password`) usando um runner **com timeout** — **não trava** mais quando já havia um
+   RustDesk aberto ✅ — e reinicia o serviço.
+3. Abre o RustDesk, lê o **ID** (`--get-id`), **copia para a área de transferência** e
+   **envia ao Nump** (`POST /acessos/ferramenta/<TOKEN>/id`).
+
+**No painel do técnico (index.html):** o card **Autorizado** mostra o **Código de acesso (ID)** em
+destaque — ele **aparece sozinho** (auto-refresh de 4 s, com pulso visual + aviso sonoro) assim que
+o script do cliente o envia, **sem o cliente digitar nada** ✅. Basta clicar em **Copiar ID** e
+colar no RustDesk; a senha temporária já está aplicada (acesso não atendido).
 
 > **Uma execução só:** antes o `.bat` se reexecutava sem esperar e a janela do cliente fechava,
 > dando a impressão de "rodar 2 vezes". Agora é 1 clique no UAC e 1 janela de trabalho.
+
+> ⚠️ **Dois bugs corrigidos em 2026-10-21 (o "nada acontecia"):**
+> 1. O `.bat` antigo embutia o script PowerShell em **base64 numa linha única** e o `cmd` falhava
+>    com *"A linha de entrada é muito longa"* antes de fazer qualquer coisa. Agora o `.bat` é curto e
+>    só baixa o script.
+> 2. `Start-Process rustdesk.exe --password ... -Wait` **travava para sempre** se já houvesse um
+>    RustDesk aberto (o processo novo "cola" na instância viva). Agora fecha instâncias antes e usa
+>    **timeout**.
 
 **No fim do atendimento**, o cliente escolhe na página:
 
@@ -182,18 +200,19 @@ senha — **sem o cliente aceitar nada** ✅
 | **Encerrar atendimento** (`/acessos/<TOKEN>/encerrar.bat`) | limpa a senha e para o serviço — **o RustDesk continua instalado** | máquinas que serão acessadas de novo |
 | **Desinstalar o RustDesk por completo** (`/acessos/<TOKEN>/desinstalar.bat`) | roda `rustdesk.exe --uninstall` e ainda limpa as pastas de dados/SYSTEM — **remove de vez** | máquinas com pouco acesso remoto |
 
-> No painel do técnico, o card **Autorizado** mostra o **ID e a senha** com botões **Copiar**
-> (e "Copiar tudo"), e traz os dois botões: **Remover do painel** (limpa a lista e abre o
-> WhatsApp com o link de encerrar) e **Desinstalar RustDesk** (abre o WhatsApp com o link de
-> desinstalação completa). Os botões destrutivos ficam em **linha própria** para não confundir
-> com o botão de WhatsApp ao lado.
+> No painel do técnico, o card **Autorizado** mostra o **Código de acesso (ID)** em destaque com
+> botão **Copiar ID** (senha/servidor também com **Copiar**), e traz os dois botões:
+> **Remover do painel** (limpa a lista e abre o WhatsApp com o link de encerrar) e
+> **Desinstalar RustDesk** (abre o WhatsApp com o link de desinstalação completa). Os botões
+> destrutivos ficam em **linha própria** para não confundir com o botão de WhatsApp ao lado.
 
 > Teste também **antes do consentimento** (token ainda PENDENTE): deve recusar com
 > **"Autorize o acesso antes de baixar a ferramenta"** ✅
 >
-> Segurança (endurecido em 2026-10-20): o **link de acesso remoto tem 24 chars** (antes 8). O
-> endpoint `GET /acessos/ferramenta/{fToken}/senha` **não é mais usado pelo `.bat`** (a senha vai
-> embutida no PowerShell gerado, formato comprovado em Windows real) — ficou como legado.
+> Segurança (endurecido em 2026-10-20): o **link de acesso remoto tem 24 chars** (antes 8). O ID
+> enviado pelo script (`POST /acessos/ferramenta/<TOKEN>/id`) é **autoritativo** — o painel usa o
+> valor real da máquina, mesmo que o n8n tenha informado outro. O endpoint legado
+> `GET /acessos/ferramenta/{fToken}/senha` **não é mais usado pelo `.bat`**.
 
 ### 4.7 Encerre ou desinstale depois (opcional)
 
@@ -257,6 +276,7 @@ curl -s "http://localhost:8081/files/{ID}/downloads" \
 - [ ] Passo 2: enviei → copiei link → baixei o `.zip`
 - [ ] Passo 3: cliente (anônimo) me devolveu arquivo → apareceu no meu painel
 - [ ] Passo 4: cliente autorizou → auditoria registrada → uso único bloqueou 2ª tentativa
+- [ ] Passo 4: `.bat` rodou **1x** (1 clique no UAC) e o **ID apareceu sozinho** no painel do técnico
 - [ ] Passo 5 (se fez): n8n disparou os 4 eventos e a página mostrou o ID do RustDesk
 - [ ] Passo 6: rotas privadas bloqueadas; expiração/revogação funcionando
 - [ ] Console do navegador (`F12`) **limpo** em index / coleta / consentimento
