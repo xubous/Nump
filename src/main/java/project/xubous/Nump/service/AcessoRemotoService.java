@@ -33,6 +33,10 @@ public class AcessoRemotoService
     @Value ( "${app.rustdesk.download-url:https://github.com/rustdesk/rustdesk/releases/download/1.5.0/rustdesk-1.5.0-x86_64.exe}" )
     private String rustdeskDownloadUrl;
 
+    // URL pública do Nump (o .bat baixa o script PowerShell por ela)
+    @Value ( "${app.base-url:http://localhost:8081}" )
+    private String appBaseUrl;
+
     public AcessoRemotoService ( AcessoRemotoRepository acessoRemotoRepository,
                                  Shortener shortener,
                                  WebhookPublisher webhookPublisher )
@@ -212,16 +216,15 @@ public class AcessoRemotoService
     // ── Ferramenta RustDesk para o cliente baixar ─────────────────────────────
 
     // Gera o .bat que o cliente executa na máquina dele. Fluxo (UMA execução só):
-    //   1. o .bat salva um script PowerShell embutido em %TEMP% e o roda ELEVADO
-    //      com -Wait (o cliente clica 1x "Sim" no UAC e a mesma janela segue);
-    //   2. o PowerShell baixa o RustDesk RÁPIDO (curl com progresso; fallback
-    //      BITS/Invoke-WebRequest), instala em silêncio;
+    //   1. o .bat é CURTO: baixa o script PowerShell do Nump (rota pública) e o
+    //      executa ELEVADO com -Wait (o cliente clica 1x "Sim" no UAC e a mesma
+    //      janela segue — antes a janela fechava e parecia exigir "rodar 2x");
+    //   2. o PowerShell detecta se o RustDesk JÁ está instalado (nesse caso pula
+    //      download e instalação), senão baixa (curl/BITS) e instala em silêncio;
     //   3. garante o serviço (--install-service) e aplica a SENHA (--password),
     //      que é o que dá o acesso NÃO ATENDIDO (técnico conecta sem aceitar);
-    //   4. abre o RustDesk, lê o ID (--get-id) e MOSTRA na tela para o cliente
-    //      enviar ao técnico.
-    // Antes o .bat se reexecutava sem -Wait e a janela do usuário fechava,
-    // parecendo exigir "rodar 2 vezes". Agora é uma janela só, sem clicar de novo.
+    //   4. abre o RustDesk, lê o ID (--get-id), MOSTRA na tela, copia para a
+    //      área de transferência e ENVIA ao Nump (o técnico copia no painel).
     public String gerarFerramenta ( String token )
     {
         AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
@@ -232,128 +235,11 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        // valores sanitizados: só entram no .bat caracteres seguros (sem injeção)
-        String url      = sanitizar ( rustdeskDownloadUrl );
-        String senha    = sanitizar ( acesso.getRustdeskSenha ( ) );
-        String servidor = sanitizar ( acesso.getRustdeskServer ( ) );
-
-        // ── Script PowerShell embutido (roda ELEVADO, 1 janela) ──────────────
-        StringBuilder ps = new StringBuilder ( );
-        ps.append ( "$ErrorActionPreference = 'Continue'\r\n" );
-        ps.append ( "$url    = '" + url + "'\r\n" );
-        ps.append ( "$senha  = '" + senha + "'\r\n" );
-        if ( servidor != null )
-        {
-            ps.append ( "$server = '" + servidor + "'\r\n" );
-        }
-        ps.append ( "$inst   = Join-Path $env:TEMP 'nump_rustdesk_setup.exe'\r\n" );
-        ps.append ( "\r\n" );
-        ps.append ( "function Titulo($t) { Write-Host ''; Write-Host ('  ' + $t) -ForegroundColor Cyan }\r\n" );
-        ps.append ( "\r\n" );
-        ps.append ( "Write-Host ''\r\n" );
-        ps.append ( "Write-Host '  ============================================' -ForegroundColor Green\r\n" );
-        ps.append ( "Write-Host '   Atendimento remoto seguro - Nump' -ForegroundColor Green\r\n" );
-        ps.append ( "Write-Host '  ============================================' -ForegroundColor Green\r\n" );
-        ps.append ( "\r\n" );
-        // ── Download (curl com progresso; fallback BITS/Invoke-WebRequest) ────
-        ps.append ( "Titulo 'Baixando o RustDesk (isso demora um pouco)...'\r\n" );
-        ps.append ( "$baixou = $false\r\n" );
-        ps.append ( "if (Test-Path $inst) { $baixou = $true }\r\n" );
-        ps.append ( "if (-not $baixou) {\r\n" );
-        ps.append ( "  try {\r\n" );
-        ps.append ( "    $curlexe = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source\r\n" );
-        ps.append ( "    if ($curlexe) {\r\n" );
-        ps.append ( "      & $curlexe -L --progress-bar -o $inst $url\r\n" );
-        ps.append ( "      if (Test-Path $inst) { $baixou = $true }\r\n" );
-        ps.append ( "    }\r\n" );
-        ps.append ( "  } catch { }\r\n" );
-        ps.append ( "}\r\n" );
-        ps.append ( "if (-not $baixou) {\r\n" );
-        ps.append ( "  try {\r\n" );
-        ps.append ( "    Import-Module BitsTransfer -ErrorAction Stop\r\n" );
-        ps.append ( "    Start-BitsTransfer -Source $url -Destination $inst\r\n" );
-        ps.append ( "  } catch {\r\n" );
-        ps.append ( "    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12\r\n" );
-        ps.append ( "    Invoke-WebRequest -Uri $url -OutFile $inst -UseBasicParsing\r\n" );
-        ps.append ( "  }\r\n" );
-        ps.append ( "  if (Test-Path $inst) { $baixou = $true }\r\n" );
-        ps.append ( "}\r\n" );
-        ps.append ( "if (-not $baixou) { goto falha }\r\n" );
-        ps.append ( "\r\n" );
-        // ── Instala em silêncio ───────────────────────────────────────────────
-        ps.append ( "Titulo 'Instalando o RustDesk (pode aparecer uma janela de progresso)...'\r\n" );
-        ps.append ( "Start-Process -FilePath $inst -ArgumentList '--silent-install' -Wait\r\n" );
-        ps.append ( "Start-Sleep -Seconds 8\r\n" );
-        ps.append ( "\r\n" );
-        // ── Localiza o rustdesk.exe (install elevado e por usuário) ───────────
-        ps.append ( "$cands = @(\r\n" );
-        ps.append ( "  (Join-Path $env:ProgramFiles 'RustDesk\\rustdesk.exe'),\r\n" );
-        ps.append ( "  (Join-Path ${env:ProgramFiles(x86)} 'RustDesk\\rustdesk.exe'),\r\n" );
-        ps.append ( "  (Join-Path $env:LOCALAPPDATA 'RustDesk\\rustdesk.exe'),\r\n" );
-        ps.append ( "  (Join-Path $env:LOCALAPPDATA 'Programs\\RustDesk\\rustdesk.exe')\r\n" );
-        ps.append ( ")\r\n" );
-        ps.append ( "$app = $cands | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1\r\n" );
-        ps.append ( "if (-not $app) { goto falha }\r\n" );
-        ps.append ( "\r\n" );
-        if ( servidor != null )
-        {
-            ps.append ( "$env:RUSTDESK_API_HOST = $server\r\n" );
-        }
-        // ── Serviço + senha de atendimento (acesso não atendido) ──────────────
-        ps.append ( "Titulo 'Preparando o acesso...'\r\n" );
-        ps.append ( "Start-Process -FilePath $app -ArgumentList '--install-service' -Wait -ErrorAction SilentlyContinue\r\n" );
-        ps.append ( "Start-Sleep -Seconds 5\r\n" );
-        ps.append ( "Start-Process -FilePath $app -ArgumentList ('--password', $senha) -Wait -ErrorAction SilentlyContinue\r\n" );
-        ps.append ( "Start-Sleep -Seconds 3\r\n" );
-        ps.append ( "\r\n" );
-        // ── Abre o RustDesk e lê o ID ────────────────────────────────────────
-        ps.append ( "Start-Process -FilePath $app -ErrorAction SilentlyContinue\r\n" );
-        ps.append ( "Titulo 'Conectando ao servidor, aguarde o ID...'\r\n" );
-        ps.append ( "$id = ''\r\n" );
-        ps.append ( "for ($i = 0; $i -lt 15 -and -not $id; $i++) {\r\n" );
-        ps.append ( "  Start-Sleep -Seconds 3\r\n" );
-        ps.append ( "  try {\r\n" );
-        ps.append ( "    $out = & $app --get-id 2>$null | Out-String\r\n" );
-        ps.append ( "    if ($out -match '(\\d{6,})') { $id = $Matches[1] }\r\n" );
-        ps.append ( "  } catch { }\r\n" );
-        ps.append ( "}\r\n" );
-        ps.append ( "\r\n" );
-        ps.append ( "Write-Host ''\r\n" );
-        ps.append ( "Write-Host '  --------------------------------------------' -ForegroundColor Yellow\r\n" );
-        ps.append ( "if ($id) {\r\n" );
-        ps.append ( "  Write-Host ('   ID do RustDesk: ' + $id) -ForegroundColor Yellow\r\n" );
-        ps.append ( "} else {\r\n" );
-        ps.append ( "  Write-Host '   Nao consegui ler o ID automaticamente.' -ForegroundColor Yellow\r\n" );
-        ps.append ( "}\r\n" );
-        ps.append ( "Write-Host '  --------------------------------------------' -ForegroundColor Yellow\r\n" );
-        ps.append ( "Write-Host ''\r\n" );
-        ps.append ( "if ($id) {\r\n" );
-        ps.append ( "  Write-Host '  Envie este ID ao tecnico. NAO precisa aceitar nada:' -ForegroundColor White\r\n" );
-        ps.append ( "  Write-Host '  a senha de atendimento ja esta aplicada.' -ForegroundColor White\r\n" );
-        ps.append ( "  try { Set-Clipboard -Value $id; Write-Host '  (ID copiado para a area de transferencia)' -ForegroundColor DarkGray } catch { }\r\n" );
-        ps.append ( "} else {\r\n" );
-        ps.append ( "  Write-Host '  Abra o RustDesk e envie ao tecnico o ID exibido.' -ForegroundColor White\r\n" );
-        ps.append ( "}\r\n" );
-        ps.append ( "Write-Host '  Mantenha o RustDesk aberto ate o atendimento acabar.' -ForegroundColor White\r\n" );
-        ps.append ( "goto fim\r\n" );
-        ps.append ( "\r\n" );
-        ps.append ( ":falha\r\n" );
-        ps.append ( "Write-Host ''\r\n" );
-        ps.append ( "Write-Host '  Nao foi possivel preparar o acesso remoto.' -ForegroundColor Red\r\n" );
-        ps.append ( "Write-Host '  Baixe o RustDesk em https://rustdesk.com, instale,' -ForegroundColor Red\r\n" );
-        ps.append ( "Write-Host '  abra e informe o ID exibido ao tecnico.' -ForegroundColor Red\r\n" );
-        ps.append ( "\r\n" );
-        ps.append ( ":fim\r\n" );
-        ps.append ( "Write-Host ''\r\n" );
-        ps.append ( "Write-Host '  Pressione uma tecla para fechar esta janela...' -ForegroundColor DarkGray\r\n" );
-        ps.append ( "$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')\r\n" );
-
-        // ── .bat: salva o PowerShell acima e o roda elevado, com -Wait ────────
-        // -Wait mantém a janela original aberta até o script elevado terminar,
-        // então o cliente NÃO precisa executar o arquivo de novo.
-        String b64 = java.util.Base64.getEncoder ( ).encodeToString (
-                ps.toString ( ).getBytes ( java.nio.charset.StandardCharsets.UTF_16LE ) );
-
+        // URL do script PowerShell (rota pública). O .bat fica curto de propósito:
+        // a versão anterior embutia o script em base64 numa linha só e o cmd
+        // estourava com "A linha de entrada é muito longa" e não fazia nada.
+        String baseUrl = appBaseUrl;
+        String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
@@ -364,31 +250,231 @@ public class AcessoRemotoService
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  O Windows vai pedir permissao de administrador.\r\n" );
-        bat.append ( "echo  Clique em SIM e aguarde (a instalacao comeca sozinha).\r\n" );
+        bat.append ( "echo  Clique em SIM e aguarde a configuracao terminar.\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "set \"PSS=%TEMP%\\nump_atendimento.ps1\"\r\n" );
-        // Grava o script decodificando o base64 (UTF-16LE) via certutil.
-        bat.append ( "set \"B64=%TEMP%\\nump_atendimento.b64\"\r\n" );
-        bat.append ( "> \"%B64%\" echo " + b64 + "\r\n" );
-        bat.append ( "certutil -f -decode \"%B64%\" \"%PSS%\" >nul 2>&1\r\n" );
-        bat.append ( "del \"%B64%\" >nul 2>&1\r\n" );
-        bat.append ( "if not exist \"%PSS%\" goto sempoder\r\n" );
-        // Eleva e ESPERA (-Wait): uma única janela de trabalho, sem rodar 2x.
-        // A janela original só sai quando o script elevado terminar.
-        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','%PSS%'\"\r\n" );
-        bat.append ( "del \"%PSS%\" >nul 2>&1\r\n" );
+        bat.append ( "set \"PS1=%TEMP%\\nump_atendimento.ps1\"\r\n" );
+        bat.append ( "echo  Baixando o script de atendimento...\r\n" );
+        bat.append ( "curl -L -s -o \"%PS1%\" \"" + psUrl + "\"\r\n" );
+        // fallback: se o curl falhar, tenta de novo pelo PowerShell
+        bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
+        bat.append ( "if not exist \"%PS1%\" goto sempoder\r\n" );
+        // Eleva e ESPERA (-Wait): uma única janela de trabalho.
+        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','%PS1%'\"\r\n" );
+        bat.append ( "del \"%PS1%\" >nul 2>&1\r\n" );
         bat.append ( "exit /b 0\r\n" );
         bat.append ( "\r\n" );
         bat.append ( ":sempoder\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Nao foi possivel preparar o script de atendimento.\r\n" );
+        bat.append ( "echo  Nao foi possivel baixar o script de atendimento.\r\n" );
         bat.append ( "echo  Baixe o RustDesk em https://rustdesk.com, instale,\r\n" );
-        bat.append ( "echo  abra e informe o ID exibido ao tecnico.\r\n" );
+        bat.append ( "echo  abra e informe o codigo de acesso ao tecnico.\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 1\r\n" );
 
         return bat.toString ( );
+    }
+
+    // Gera o script PowerShell de configuração (baixado pelo .bat). Ele:
+    //   - detecta o RustDesk JÁ instalado (pula download/instalação — tratamento
+    //     para quem já tem o programa na máquina);
+    //   - instala em silêncio só quando necessário;
+    //   - aplica serviço + senha (acesso não atendido);
+    //   - lê o ID, mostra na tela, copia para o clipboard e envia ao Nump.
+    public String gerarScriptPowerShell ( String token )
+    {
+        AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
+                .orElseThrow ( ( ) -> new IllegalArgumentException ( "Link de acesso inválido" ) );
+
+        if ( acesso.getStatus ( ) != StatusAcessoRemoto.CONSENTIDO )
+        {
+            throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
+        }
+
+        String url      = sanitizar ( rustdeskDownloadUrl );
+        String senha    = sanitizar ( acesso.getRustdeskSenha ( ) );
+        String servidor = sanitizar ( acesso.getRustdeskServer ( ) );
+        String baseUrl  = appBaseUrl;
+
+        StringBuilder ps = new StringBuilder ( );
+        ps.append ( "$ErrorActionPreference = 'Continue'\r\n" );
+        ps.append ( "$NumpToken = '" + token + "'\r\n" );
+        ps.append ( "$NumpBase  = '" + baseUrl + "'\r\n" );
+        ps.append ( "$Url       = '" + url + "'\r\n" );
+        ps.append ( "$Senha     = '" + senha + "'\r\n" );
+        if ( servidor != null )
+        {
+            ps.append ( "$Server    = '" + servidor + "'\r\n" );
+        }
+        ps.append ( "\r\n" );
+        ps.append ( "function Titulo($t){ Write-Host ''; Write-Host ('  ' + $t) -ForegroundColor Cyan }\r\n" );
+        // Roda o rustdesk.exe com argumentos e ESPERA COM TIMEOUT. Sem isso, um
+        // Start-Process -Wait pode travar para sempre quando já existe uma
+        // instância do RustDesk aberta (o processo novo "cola" na instância viva
+        // e nunca retorna). O timeout garante que o script sempre avança.
+        ps.append ( "function RodarRustDesk([string[]]$arg, [int]$segundos = 30){\r\n" );
+        ps.append ( "  try{\r\n" );
+        ps.append ( "    $p = Start-Process -FilePath $app -ArgumentList $arg -PassThru -WindowStyle Hidden\r\n" );
+        ps.append ( "    $p | Wait-Process -Timeout $segundos -ErrorAction SilentlyContinue\r\n" );
+        ps.append ( "    if(-not $p.HasExited){ try{ $p | Stop-Process -Force -ErrorAction SilentlyContinue }catch{} }\r\n" );
+        ps.append ( "  }catch{}\r\n" );
+        ps.append ( "}\r\n" );
+        // Fecha instâncias do RustDesk em execução (do usuário e do serviço) para
+        // que --install-service / --password apliquem de verdade, sem travar.
+        ps.append ( "function FecharRustDesk{\r\n" );
+        ps.append ( "  Get-Process rustdesk -ErrorAction SilentlyContinue | ForEach-Object {\r\n" );
+        ps.append ( "    try{ $_.CloseMainWindow() | Out-Null }catch{}\r\n" );
+        ps.append ( "  }\r\n" );
+        ps.append ( "  Start-Sleep -Seconds 2\r\n" );
+        ps.append ( "  Get-Process rustdesk -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue\r\n" );
+        ps.append ( "  Start-Sleep -Seconds 2\r\n" );
+        ps.append ( "}\r\n" );
+        // Procura o rustdesk.exe nos caminhos possíveis (instalado por admin ou por usuário)
+        ps.append ( "function AchouExe{\r\n" );
+        ps.append ( "  $c = @(\r\n" );
+        ps.append ( "    (Join-Path $env:ProgramFiles 'RustDesk\\rustdesk.exe'),\r\n" );
+        ps.append ( "    (Join-Path ${env:ProgramFiles(x86)} 'RustDesk\\rustdesk.exe'),\r\n" );
+        ps.append ( "    (Join-Path $env:LOCALAPPDATA 'RustDesk\\rustdesk.exe'),\r\n" );
+        ps.append ( "    (Join-Path $env:LOCALAPPDATA 'Programs\\RustDesk\\rustdesk.exe')\r\n" );
+        ps.append ( "  )\r\n" );
+        ps.append ( "  foreach($p in $c){ if($p -and (Test-Path $p)){ return $p } }\r\n" );
+        ps.append ( "  return $null\r\n" );
+        ps.append ( "}\r\n" );
+        ps.append ( "\r\n" );
+        ps.append ( "Write-Host ''\r\n" );
+        ps.append ( "Write-Host '  ============================================' -ForegroundColor Green\r\n" );
+        ps.append ( "Write-Host '   Atendimento remoto seguro - Nump' -ForegroundColor Green\r\n" );
+        ps.append ( "Write-Host '  ============================================' -ForegroundColor Green\r\n" );
+        ps.append ( "Write-Host ''\r\n" );
+        // ── Já tem RustDesk? Então não baixa nem instala de novo ─────────────
+        ps.append ( "$app = AchouExe\r\n" );
+        ps.append ( "if($app){\r\n" );
+        ps.append ( "  Titulo 'RustDesk ja esta instalado - pulando download e instalacao.'\r\n" );
+        ps.append ( "} else {\r\n" );
+        ps.append ( "  $inst = Join-Path $env:TEMP 'nump_rustdesk_setup.exe'\r\n" );
+        ps.append ( "  Titulo 'Baixando o RustDesk (isso demora um pouco)...'\r\n" );
+        ps.append ( "  $baixou = $false\r\n" );
+        ps.append ( "  if(Test-Path $inst){ $baixou = $true }\r\n" );
+        ps.append ( "  if(-not $baixou){\r\n" );
+        ps.append ( "    try{\r\n" );
+        ps.append ( "      $ce = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source\r\n" );
+        ps.append ( "      if($ce){ & $ce -L --progress-bar -o $inst $Url; if(Test-Path $inst){ $baixou = $true } }\r\n" );
+        ps.append ( "    }catch{}\r\n" );
+        ps.append ( "  }\r\n" );
+        ps.append ( "  if(-not $baixou){\r\n" );
+        ps.append ( "    try{ Import-Module BitsTransfer -ErrorAction Stop; Start-BitsTransfer -Source $Url -Destination $inst }\r\n" );
+        ps.append ( "    catch{ [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri $Url -OutFile $inst -UseBasicParsing }\r\n" );
+        ps.append ( "    if(Test-Path $inst){ $baixou = $true }\r\n" );
+        ps.append ( "  }\r\n" );
+        ps.append ( "  if(-not $baixou){ goto falha }\r\n" );
+        ps.append ( "  Titulo 'Instalando o RustDesk (pode aparecer uma janela de progresso)...'\r\n" );
+        ps.append ( "  $pi = Start-Process -FilePath $inst -ArgumentList '--silent-install' -PassThru\r\n" );
+        ps.append ( "  $pi | Wait-Process -Timeout 180 -ErrorAction SilentlyContinue\r\n" );
+        ps.append ( "  Start-Sleep -Seconds 12\r\n" );
+        ps.append ( "  $app = AchouExe\r\n" );
+        ps.append ( "}\r\n" );
+        ps.append ( "if(-not $app){ goto falha }\r\n" );
+        ps.append ( "\r\n" );
+        if ( servidor != null )
+        {
+            ps.append ( "$env:RUSTDESK_API_HOST = $Server\r\n" );
+        }
+        // ── Serviço + senha (acesso não atendido) ─────────────────────────────
+        // Fecha instâncias abertas antes de configurar (senão o --password trava
+        // ou não grava no config do serviço).
+        ps.append ( "Titulo 'Preparando o acesso (fechando instancias abertas do RustDesk)...'\r\n" );
+        ps.append ( "FecharRustDesk\r\n" );
+        ps.append ( "Titulo 'Configurando o acesso nao atendido (servico + senha)...'\r\n" );
+        ps.append ( "RodarRustDesk @('--install-service') 60\r\n" );
+        ps.append ( "Start-Sleep -Seconds 6\r\n" );
+        // Gamal: aplica a senha. RodarRustDesk evita o travamento de -Wait.
+        ps.append ( "RodarRustDesk @('--password', $Senha) 30\r\n" );
+        ps.append ( "Start-Sleep -Seconds 4\r\n" );
+        // Reinicia o serviço para a senha valer de fato no processo do serviço.
+        ps.append ( "try{ Restart-Service RustDesk -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 6 }catch{}\r\n" );
+        ps.append ( "\r\n" );
+        // ── Abre o RustDesk e lê o ID ────────────────────────────────────────
+        ps.append ( "Titulo 'Abrindo o RustDesk...'\r\n" );
+        ps.append ( "Start-Process -FilePath $app -ErrorAction SilentlyContinue\r\n" );
+        ps.append ( "Titulo 'Aguardando o codigo de acesso do RustDesk...'\r\n" );
+        ps.append ( "$id = ''\r\n" );
+        ps.append ( "for($i = 0; $i -lt 20 -and -not $id; $i++){\r\n" );
+        ps.append ( "  Start-Sleep -Seconds 3\r\n" );
+        ps.append ( "  try{\r\n" );
+        ps.append ( "    $out = & $app --get-id 2>$null | Out-String\r\n" );
+        ps.append ( "    if($out -match '(\\d{6,})'){ $id = $Matches[1] }\r\n" );
+        ps.append ( "  }catch{}\r\n" );
+        ps.append ( "}\r\n" );
+        ps.append ( "\r\n" );
+        // ── Envia o ID ao Nump (o técnico copia no painel, sem digitação) ────
+        ps.append ( "if($id){\r\n" );
+        ps.append ( "  try{\r\n" );
+        ps.append ( "    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12\r\n" );
+        ps.append ( "    $body = @{ rustdeskId = $id } | ConvertTo-Json -Compress\r\n" );
+        ps.append ( "    Invoke-WebRequest -Uri ($NumpBase + '/acessos/ferramenta/' + $NumpToken + '/id') -Method Post -ContentType 'application/json' -Body $body -UseBasicParsing -TimeoutSec 15 | Out-Null\r\n" );
+        ps.append ( "    Write-Host '  Codigo enviado ao tecnico.' -ForegroundColor Green\r\n" );
+        ps.append ( "  }catch{ Write-Host '  (nao consegui avisar o tecnico, envie o codigo manualmente)' -ForegroundColor DarkGray }\r\n" );
+        ps.append ( "}\r\n" );
+        ps.append ( "\r\n" );
+        ps.append ( "Write-Host ''\r\n" );
+        ps.append ( "Write-Host '  --------------------------------------------' -ForegroundColor Yellow\r\n" );
+        ps.append ( "if($id){\r\n" );
+        ps.append ( "  Write-Host ('   CODIGO DE ACESSO: ' + $id) -ForegroundColor Yellow\r\n" );
+        ps.append ( "} else {\r\n" );
+        ps.append ( "  Write-Host '   Abra o RustDesk na janela que apareceu e leia o ID.' -ForegroundColor Yellow\r\n" );
+        ps.append ( "}\r\n" );
+        ps.append ( "Write-Host '  --------------------------------------------' -ForegroundColor Yellow\r\n" );
+        ps.append ( "Write-Host ''\r\n" );
+        ps.append ( "if($id){\r\n" );
+        ps.append ( "  Write-Host '  A SENHA de atendimento ja esta aplicada.' -ForegroundColor White\r\n" );
+        ps.append ( "  Write-Host '  O tecnico ja recebeu este codigo - nao precisa enviar.' -ForegroundColor White\r\n" );
+        ps.append ( "  try{ Set-Clipboard -Value $id; Write-Host '  (codigo copiado para a area de transferencia)' -ForegroundColor DarkGray }catch{}\r\n" );
+        ps.append ( "}\r\n" );
+        ps.append ( "Write-Host '  Mantenha o RustDesk aberto ate o atendimento acabar.' -ForegroundColor White\r\n" );
+        ps.append ( "Write-Host '  Ao final, use os botoes da pagina para encerrar ou desinstalar.' -ForegroundColor White\r\n" );
+        ps.append ( "goto fim\r\n" );
+        ps.append ( "\r\n" );
+        ps.append ( ":falha\r\n" );
+        ps.append ( "Write-Host ''\r\n" );
+        ps.append ( "Write-Host '  Nao foi possivel preparar o acesso remoto.' -ForegroundColor Red\r\n" );
+        ps.append ( "Write-Host '  Abra o RustDesk manualmente e informe o codigo ao tecnico.' -ForegroundColor Red\r\n" );
+        ps.append ( "\r\n" );
+        ps.append ( ":fim\r\n" );
+        ps.append ( "Write-Host ''\r\n" );
+        ps.append ( "Write-Host '  Pressione ENTER para fechar esta janela...' -ForegroundColor DarkGray\r\n" );
+        ps.append ( "Read-Host | Out-Null\r\n" );
+
+        return ps.toString ( );
+    }
+
+    // O script envia o ID do RustDesk quando descobre — o painel do técnico passa
+    // a mostrar o "código de acesso" sem o cliente precisar digitar nada.
+    // O ID descoberto na máquina é AUTORITATIVO: sobrescreve um ID vindo do n8n
+    // (que pode estar desatualizado), garantindo que o painel mostre o valor real.
+    @Transactional
+    public void registrarIdPelaFerramenta ( String token, String rustdeskId )
+    {
+        if ( rustdeskId == null || rustdeskId.isBlank ( ) )
+        {
+            return;
+        }
+
+        String idLimpo = rustdeskId.trim ( );
+
+        acessoRemotoRepository.findByToken ( token ).ifPresent ( ( acesso ) ->
+        {
+            if ( acesso.getStatus ( ) == StatusAcessoRemoto.CONSENTIDO
+                    && !idLimpo.equals ( acesso.getRustdeskId ( ) ) )
+            {
+                acesso.setRustdeskId ( idLimpo );
+                // marca que a ferramenta já rodou na máquina (auditoria)
+                if ( acesso.getFerramentaUsadaEm ( ) == null )
+                {
+                    acesso.setFerramentaUsadaEm ( java.time.LocalDateTime.now ( ) );
+                }
+                acessoRemotoRepository.save ( acesso );
+            }
+        } );
     }
 
     // Troca o token da ferramenta pela senha temporária (usado pelo .bat).

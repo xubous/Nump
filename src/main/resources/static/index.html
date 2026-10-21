@@ -272,7 +272,47 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 }
 .acesso-dados .dado .btn-mini:hover{border-color:var(--success);color:var(--success)}
 .acesso-dados .dado .btn-mini.ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:var(--success)}
-.acesso-dados .copia-tudo{margin-top:8px;width:100%}
+
+/* Código de acesso (ID) — o dado que o técnico realmente usa. Fica em destaque
+   e atualiza sozinho quando o cliente executa o arquivo. */
+.acesso-id-box{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 12px;margin-bottom:8px;border-radius:var(--radius-sm);
+  background:rgba(148,163,184,.08);border:1px dashed var(--border);
+  transition:.3s
+}
+.acesso-id-box .id-rotulo{color:var(--muted);font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.acesso-id-box .id-rotulo i{color:var(--muted);margin-right:4px}
+.acesso-id-box .id-valor{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+  letter-spacing:.06em;font-size:1.05rem;color:var(--muted);word-break:break-all;flex:1;min-width:120px
+}
+.acesso-id-box .id-aguardando{
+  display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);flex-shrink:0
+}
+.acesso-id-box.tem-id{
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4)
+}
+.acesso-id-box.tem-id .id-rotulo,
+.acesso-id-box.tem-id .id-rotulo i{color:var(--success)}
+.acesso-id-box.tem-id .id-valor{color:var(--text)}
+.acesso-id-box .btn-copiar-id{
+  padding:6px 12px;border:1px solid rgba(34,197,94,.4);border-radius:6px;
+  background:rgba(34,197,94,.12);color:var(--success);font-size:.78rem;
+  font-weight:700;cursor:pointer;transition:.2s;flex-shrink:0
+}
+.acesso-id-box .btn-copiar-id:hover{background:rgba(34,197,94,.22)}
+.acesso-id-box .btn-copiar-id.ok{background:var(--success);color:#fff;border-color:var(--success)}
+
+/* Card inteiro pisca quando o ID chega — o técnico percebe na hora */
+.acesso-card.id-recebido{
+  animation:pulsoId 1s ease-in-out 2;
+  border-color:rgba(34,197,94,.55) !important
+}
+@keyframes pulsoId{
+  0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+  50%{box-shadow:0 0 0 6px rgba(34,197,94,.18)}
+}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:2.2rem;margin-bottom:10px;display:block;opacity:.5}
@@ -638,9 +678,27 @@ const acessoList  = document.getElementById("acesso-list");
 function showRemotePanel() {
   remotePanel.style.display = "block";
   loadAcessos();
+  iniciarAutoAtualizacao();
 }
 
-async function loadAcessos() {
+// ── Atualização automática do painel ────────────────────────────────────────
+// O script do cliente envia o "código de acesso" (ID) assim que descobre. Este
+// polling faz o ID aparecer no painel do técnico sozinho, sem recarregar a
+// página — é o que torna o acesso instantâneo (sem o cliente digitar nada).
+let autoTimer = null;
+
+function iniciarAutoAtualizacao() {
+  if (autoTimer) return;
+  autoTimer = setInterval(() => {
+    // só atualiza com a aba visível (economiza requisições)
+    if (document.hidden) return;
+    loadAcessos(true);
+  }, 4000);
+}
+
+// `silencioso = true` (polling): atualiza os cards no lugar, sem piscar a lista
+// e sem mexer no que o técnico está fazendo.
+async function loadAcessos(silencioso) {
   const token = localStorage.getItem("nump_token");
   if (!token) return;
 
@@ -650,9 +708,69 @@ async function loadAcessos() {
     const acessos = await res.json();
 
     if (!acessos.length) return;
+
+    if (silencioso) {
+      acessos.forEach(a => atualizarAcessoCard(a));
+      return;
+    }
+
     acessoList.innerHTML = "";
     acessos.forEach(a => acessoList.appendChild(buildAcessoCard(a)));
   } catch { /* falha silenciosa — lista fica no empty state */ }
+}
+
+// Atualiza um card já renderizado com os dados novos (ID que acabou de chegar,
+// mudança de status etc.). Se o card ainda não existe, cria.
+function atualizarAcessoCard(a) {
+  const card = acessoList.querySelector(`.acesso-card[data-id="${a.id}"]`);
+  if (!card) {
+    if (acessoList.querySelector(".empty-state")) acessoList.innerHTML = "";
+    acessoList.prepend(buildAcessoCard(a));
+    return;
+  }
+
+  // O status mudou (PENDENTE → CONSENTIDO etc.)? Reconstrói o card inteiro:
+  // os botões e blocos mudam junto, então remendar o HTML seria frágil.
+  const statusAtual = (a.status || "PENDENTE").toLowerCase();
+  if (card.dataset.status !== statusAtual) {
+    const novo = buildAcessoCard(a);
+    card.replaceWith(novo);
+    if (statusAtual === "consentido") {
+      novo.classList.add("id-recebido");
+      setTimeout(() => novo.classList.remove("id-recebido"), 4000);
+      tocarAviso();
+    }
+    return;
+  }
+
+  // O ID chegou agora? Troca o bloco "aguardando" pelo ID + botão Copiar.
+  const box = card.querySelector(`.acesso-id-box`);
+  if (box && a.rustdeskId && !box.classList.contains("tem-id")) {
+    const valor = card.querySelector(`#rd-id-${a.id}`);
+    if (valor) valor.textContent = a.rustdeskId;
+
+    box.classList.remove("sem-id");
+    box.classList.add("tem-id");
+
+    const aguardando = box.querySelector(".id-aguardando");
+    if (aguardando) aguardando.remove();
+
+    if (!box.querySelector(".btn-copiar-id")) {
+      const btn = document.createElement("button");
+      btn.className = "btn-mini btn-copiar-id";
+      btn.dataset.alvo = `rd-id-${a.id}`;
+      btn.textContent = "Copiar ID";
+      btn.onclick = async function() {
+        await copiarTexto(document.getElementById(btn.dataset.alvo).textContent.trim(), btn);
+      };
+      box.appendChild(btn);
+    }
+
+    // destaca o card para o técnico perceber na hora
+    card.classList.add("id-recebido");
+    setTimeout(() => card.classList.remove("id-recebido"), 4000);
+    tocarAviso();
+  }
 }
 
 btnAcesso.onclick = async () => {
@@ -693,6 +811,8 @@ function buildAcessoCard(a) {
 
   const li = document.createElement("li");
   li.className = "acesso-card";
+  li.dataset.id = a.id;
+  li.dataset.status = statusCls;
   li.innerHTML = `
     <div class="acesso-top">
       <div class="acesso-icon"><i class="fa-solid fa-desktop"></i></div>
@@ -717,11 +837,14 @@ function buildAcessoCard(a) {
       <i class="fa-solid fa-shield-halved"></i>
       Autorizado em ${fmtDataHora(a.consentAt)}${a.consentIp ? " · IP " + escapeAttr(a.consentIp) : ""}
     </div>` : ""}
-    ${statusCls === "consentido" && (a.rustdeskId || a.rustdeskSenha) ? `
-    <div class="acesso-dados">
-      <div class="dado"><span class="rotulo">ID RustDesk:</span>
-        <span class="valor" id="rd-id-${a.id}">${a.rustdeskId ? escapeHtml(a.rustdeskId) : "— (o script mostra na tela do cliente)"}</span>
-        ${a.rustdeskId ? `<button class="btn-mini" data-alvo="rd-id-${a.id}">Copiar</button>` : ""}
+    ${statusCls === "consentido" ? `
+    <div class="acesso-dados" data-sessao="${a.id}">
+      <div class="acesso-id-box ${a.rustdeskId ? "tem-id" : "sem-id"}">
+        <span class="id-rotulo"><i class="fa-solid fa-key"></i> Código de acesso (ID)</span>
+        <span class="id-valor" id="rd-id-${a.id}">${a.rustdeskId ? escapeHtml(a.rustdeskId) : "aguardando o cliente executar o arquivo…"}</span>
+        ${a.rustdeskId
+          ? `<button class="btn-mini btn-copiar-id" data-alvo="rd-id-${a.id}">Copiar ID</button>`
+          : `<span class="id-aguardando"><i class="fa-solid fa-spinner fa-spin"></i> atualiza sozinho</span>`}
       </div>
       <div class="dado"><span class="rotulo">Senha:</span>
         <span class="valor" id="rd-senha-${a.id}">${a.rustdeskSenha ? escapeHtml(a.rustdeskSenha) : "—"}</span>
@@ -732,7 +855,6 @@ function buildAcessoCard(a) {
         <span class="valor" id="rd-srv-${a.id}">${escapeHtml(a.rustdeskServer)}</span>
         <button class="btn-mini" data-alvo="rd-srv-${a.id}">Copiar</button>
       </div>` : ""}
-      <button class="btn-mini copia-tudo" data-tudo="1">Copiar tudo (ID + senha)</button>
     </div>` : ""}`;
 
   // ── Botões de copiar dos dados da sessão (ID/senha/servidor) ────────────
@@ -743,14 +865,6 @@ function buildAcessoCard(a) {
         await copiarTexto(document.getElementById(btn.dataset.alvo).textContent.trim(), btn);
       };
     });
-    const btnTudo = dadosEl.querySelector(".btn-mini[data-tudo]");
-    if (btnTudo) btnTudo.onclick = async function() {
-      let txt = "";
-      if (a.rustdeskId)     txt += "ID RustDesk: " + a.rustdeskId + "\n";
-      if (a.rustdeskSenha)  txt += "Senha: " + a.rustdeskSenha + "\n";
-      if (a.rustdeskServer) txt += "Servidor: " + a.rustdeskServer + "\n";
-      await copiarTexto(txt, btnTudo);
-    };
   }
 
   const consentUrl = a.consentUrl || "";
@@ -844,6 +958,24 @@ function fmtDataHora(iso) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
+// Aviso sonoro curto (sem arquivo externo) quando o código de acesso chega —
+// o técnico não precisa ficar olhando a tela.
+function tocarAviso() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gan = ctx.createGain();
+    osc.connect(gan);
+    gan.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gan.gain.setValueAtTime(0.08, ctx.currentTime);
+    gan.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch { /* sem áudio — segue sem o aviso */ }
+}
+
 // Copia texto para a área de transferência e dá feedback no próprio botão.
 // Usa a API moderna e, se falhar (contexto não seguro), cai no textarea.
 async function copiarTexto(txt, btn) {

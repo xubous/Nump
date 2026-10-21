@@ -92,7 +92,7 @@ public class AcessoRemotoController
     }
 
     // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta RustDesk (rota pública).
-    // O .bat é gerado na hora com a senha temporária da sessão já consentida.
+    // O .bat é curto: baixa o script PowerShell do servidor e o executa elevado.
     @GetMapping ( "/ferramenta/{token}.bat" )
     public ResponseEntity < byte [ ] > baixarFerramenta ( @PathVariable String token )
     {
@@ -101,6 +101,30 @@ public class AcessoRemotoController
         return ResponseEntity.ok ( )
                 .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.bat\"" )
                 .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
+    }
+
+    // GET /acessos/ferramenta/{token}/script.ps1 — PowerShell gerado na hora (rota pública).
+    @GetMapping ( value = "/ferramenta/{token}/script.ps1", produces = "text/plain;charset=UTF-8" )
+    public ResponseEntity < String > baixarScriptFerramenta ( @PathVariable String token )
+    {
+        String ps = acessoRemotoService.gerarScriptPowerShell ( token );
+        return ResponseEntity.ok ( )
+                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"nump_atendimento.ps1\"" )
+                .body ( ps );
+    }
+
+    // POST /acessos/ferramenta/{token}/id — o script envia o ID descoberto (rota pública).
+    @PostMapping ( "/ferramenta/{token}/id" )
+    public ResponseEntity < Void > registrarIdFerramenta ( @PathVariable String token,
+                                                           @RequestBody ( required = false ) Map < String, Object > body )
+    {
+        String id = null;
+        if ( body != null && body.get ( "rustdeskId" ) != null )
+        {
+            id = body.get ( "rustdeskId" ).toString ( );
+        }
+        acessoRemotoService.registrarIdPelaFerramenta ( token, id );
+        return ResponseEntity.ok ( ).build ( );
     }
 
     // GET /acessos/ferramenta/{fToken}/senha — troca o token de uso único do .bat

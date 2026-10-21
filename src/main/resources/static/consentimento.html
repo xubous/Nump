@@ -181,7 +181,7 @@
 
     <div class="sessao" id="sessao">
       <h3><i class="fa-solid fa-circle-check"></i> Acesso autorizado</h3>
-      <div class="linha muted">Guarde os dados abaixo para conectar:</div>
+      <div class="linha muted">Autorização registrada. Abaixo o que o técnico já recebeu — você não precisa copiar nada.</div>
       <div id="dados-sessao"></div>
       <button class="copiar" id="copiarBtn" style="display:none">Copiar dados</button>
       <a class="ferramenta" id="btnFerramenta" style="display:none" href="#">
@@ -189,9 +189,10 @@
       </a>
       <p class="instrucao" id="instrucao" style="display:none">
         1. Execute o arquivo baixado e clique em <b>Sim</b> quando o Windows pedir permissão.<br>
-        2. O script instala e abre o RustDesk já com a senha de atendimento — <b>não precisa aceitar nada</b>.<br>
-        3. Envie ao técnico o <b>ID</b> exibido e mantenha o RustDesk aberto até o fim do atendimento.<br>
-        4. <b>Ao final</b>, clique em <b>"Encerrar atendimento"</b> abaixo para revogar o acesso remoto.
+        2. <b>Já tem o RustDesk instalado?</b> O script detecta e pula a instalação — vai direto para a configuração.<br>
+        3. O script aplica a senha de atendimento e <b>envia o seu código de acesso ao técnico automaticamente</b> — você <b>não precisa digitar nem copiar nada</b>.<br>
+        4. Mantenha o RustDesk aberto até o fim do atendimento.<br>
+        5. <b>Ao final</b>, clique em <b>"Encerrar atendimento"</b> abaixo para revogar o acesso remoto.
       </p>
       <a class="encerrar" id="btnEncerrar" style="display:none" href="#">
         <i class="fa-solid fa-lock"></i> Encerrar atendimento (revogar acesso)
@@ -268,9 +269,17 @@
 
       // ── RustDesk (senha gerada pelo Nump; ID do n8n quando houver) ──────────
       if (rd) {
-        if (rd.id)    { html += linha("ID do RustDesk", rd.id); dadosParaCopiar += "ID RustDesk: " + rd.id + "\n"; }
+        if (rd.id)    { html += linha("Código de acesso (ID)", rd.id); dadosParaCopiar += "ID RustDesk: " + rd.id + "\n"; }
         if (rd.senha) { html += linha("Senha", rd.senha);       dadosParaCopiar += "Senha: " + rd.senha + "\n"; }
         if (rd.server){ html += linha("Servidor", rd.server);   dadosParaCopiar += "Servidor: " + rd.server + "\n"; }
+      }
+
+      // O código de acesso costuma ser descoberto pelo script na máquina do
+      // cliente (o n8n pode não ter o ID). Avisa que ele vai sozinho ao técnico.
+      if (!rd || !rd.id) {
+        html += `<div class="linha muted"><i class="fa-solid fa-spinner fa-spin"></i>
+                 O <b>código de acesso (ID)</b> é descoberto quando você executa o arquivo e
+                 enviado ao técnico automaticamente.</div>`;
       }
 
       // se o n8n devolveu algo que não reconhecemos, mostra o JSON cru

@@ -65,11 +65,14 @@ public class SecurityConfig
                 //  - GET  /acessos/{token}/encerrar.bat    = .bat que revoga o acesso
                 //  - GET  /acessos/{token}/desinstalar.bat = .bat que remove o RustDesk
                 //  - GET  /acessos/ferramenta/{t}.bat   = ferramenta RustDesk
+                //  - GET  /acessos/ferramenta/{t}/script.ps1 = script PowerShell
+                //  - POST /acessos/ferramenta/{t}/id    = o script avisa o ID
                 //  - GET  /acessos/ferramenta/{f}/senha = senha de uso único
                 .requestMatchers ( HttpMethod.GET,  "/acessos/*", "/acessos/*/*.bat",
                         "/acessos/ferramenta/*", "/acessos/ferramenta/*/*",
                         "/consentimento.html" ).permitAll ()
-                .requestMatchers ( HttpMethod.POST, "/acessos/*/consentir" ).permitAll ()
+                .requestMatchers ( HttpMethod.POST, "/acessos/*/consentir",
+                        "/acessos/ferramenta/*/id" ).permitAll ()
                 // admin
                 .requestMatchers ( HttpMethod.GET,    "/users" ).hasRole ( "ADMIN" )
                 .requestMatchers ( HttpMethod.DELETE, "/users/**" ).hasRole ( "ADMIN" )
