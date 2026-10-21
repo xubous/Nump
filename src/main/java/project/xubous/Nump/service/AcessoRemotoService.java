@@ -370,8 +370,11 @@ public class AcessoRemotoService
     }
 
     // Gera o .bat de ENCERRAMENTO: o cliente roda ao fim do atendimento para
-    // remover o acesso remoto (para o serviço, limpa a senha e desinstala).
-    // Assim o acesso não fica válido depois do atendimento.
+    // REVOGAR o acesso remoto desta sessão, sem desinstalar o RustDesk.
+    // Limpa a senha temporária e para o serviço: o técnico não conecta mais
+    // (a menos que gere um novo link), mas o RustDesk CONTINUA INSTALADO —
+    // ideal para máquinas que serão acessadas de novo no futuro (o próximo
+    // atendimento só reaplica a senha).
     public String gerarEncerramento ( String token )
     {
         AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
@@ -391,24 +394,107 @@ public class AcessoRemotoService
         bat.append ( "echo   Encerrar atendimento remoto - Nump\r\n" );
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Isso remove o acesso remoto desta maquina.\r\n" );
-        bat.append ( "echo  O tecnico nao podera mais se conectar.\r\n" );
+        bat.append ( "echo  Isso REVOGA o acesso remoto desta sessao:\r\n" );
+        bat.append ( "echo  o tecnico nao podera mais se conectar.\r\n" );
+        bat.append ( "echo  O RustDesk permanece instalado para futuros\r\n" );
+        bat.append ( "echo  atendimentos (nada mais precisa ser baixado).\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Removendo o acesso remoto...\r\n" );
+        bat.append ( "echo  Revogando o acesso remoto...\r\n" );
         bat.append ( "set \"APP=\"\r\n" );
         bat.append ( "if exist \"C:\\Program Files\\RustDesk\\rustdesk.exe\" set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP if exist \"%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\" set \"APP=%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP goto processo\r\n" );
-        // para o serviço e limpa a senha de acesso não atendido
-        bat.append ( "\"%APP%\" --password \"\" >nul 2>&1\r\n" );
-        bat.append ( "\"%APP%\" --service-uninstall >nul 2>&1\r\n" );
+        // limpa a senha de acesso não atendido e para o serviço (mantém instalado)
+        bat.append ( "start /wait \"\" \"%APP%\" --password \"\" >nul 2>&1\r\n" );
+        bat.append ( "start /wait \"\" \"%APP%\" --uninstall-service >nul 2>&1\r\n" );
         bat.append ( ":processo\r\n" );
         bat.append ( "taskkill /f /im rustdesk.exe >nul 2>&1\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Acesso remoto encerrado. Voce pode fechar esta janela.\r\n" );
+        bat.append ( "echo  Acesso remoto encerrado.\r\n" );
+        bat.append ( "echo  O RustDesk continua instalado nesta maquina.\r\n" );
+        bat.append ( "echo  Voce pode fechar esta janela.\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "exit /b 0\r\n" );
+
+        return bat.toString ( );
+    }
+
+    // Gera o .bat de DESINSTALAÇÃO COMPLETA (rota pública, exige consentimento).
+    // Diferente do encerramento (que só revoga o acesso), aqui o RustDesk é
+    // REMOVIDO por completo da máquina — indicado para máquinas que quase não
+    // recebem acesso remoto. Usa o desinstalador oficial (`--uninstall`) e ainda
+    // limpa as pastas de dados que o desinstalador do RustDesk costuma deixar.
+    public String gerarDesinstalacao ( String token )
+    {
+        AcessoRemoto acesso = acessoRemotoRepository.findByToken ( token )
+                .orElseThrow ( ( ) -> new IllegalArgumentException ( "Link de acesso inválido" ) );
+
+        if ( acesso.getStatus ( ) != StatusAcessoRemoto.CONSENTIDO )
+        {
+            throw new LinkIndisponivelException ( "Nenhum atendimento em andamento para este link" );
+        }
+
+        StringBuilder bat = new StringBuilder ( );
+        bat.append ( "@echo off\r\n" );
+        bat.append ( "chcp 65001 >nul\r\n" );
+        bat.append ( "title Desinstalar RustDesk - Nump\r\n" );
+        bat.append ( "rem --- Desinstalacao completa: exige admin (senão não remove). ---\r\n" );
+        bat.append ( "net session >nul 2>&1\r\n" );
+        bat.append ( "if %errorlevel% neq 0 (\r\n" );
+        bat.append ( "  echo.\r\n" );
+        bat.append ( "  echo  O Nump vai pedir permissao de administrador.\r\n" );
+        bat.append ( "  echo  Clique em SIM na janela do Windows para continuar.\r\n" );
+        bat.append ( "  echo.\r\n" );
+        bat.append ( "  powershell -NoProfile -Command \"Start-Process -FilePath '%~f0' -Verb RunAs\"\r\n" );
+        bat.append ( "  exit /b\r\n" );
+        bat.append ( ")\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  ============================================\r\n" );
+        bat.append ( "echo   Desinstalar o RustDesk - Nump\r\n" );
+        bat.append ( "echo  ============================================\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Isso REMOVE o RustDesk por completo desta maquina.\r\n" );
+        bat.append ( "echo  Use apenas se este computador quase nao recebe\r\n" );
+        bat.append ( "echo  acesso remoto. Se for ser acessado de novo, prefira\r\n" );
+        bat.append ( "echo  \"Encerrar atendimento\" (revoga o acesso e mantem).\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  Parando o RustDesk...\r\n" );
+        bat.append ( "taskkill /f /im rustdesk.exe >nul 2>&1\r\n" );
+        bat.append ( "ping -n 3 127.0.0.1 >nul\r\n" );
+        bat.append ( "set \"APP=\"\r\n" );
+        bat.append ( "if exist \"C:\\Program Files\\RustDesk\\rustdesk.exe\" set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\" set \"APP=%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "echo  Removendo o RustDesk...\r\n" );
+        bat.append ( "if not defined APP goto limpar\r\n" );
+        // desinstalador oficial: remove serviço, atalhos e arquivos do programa
+        bat.append ( "start /wait \"\" \"%APP%\" --uninstall >nul 2>&1\r\n" );
+        bat.append ( "ping -n 6 127.0.0.1 >nul\r\n" );
+        bat.append ( ":limpar\r\n" );
+        bat.append ( "rem --- O desinstalador oficial deixa pastas de dados para tras. ---\r\n" );
+        bat.append ( "rem --- Aqui removemos tambem essas pastas (cache, config, ID). ---\r\n" );
+        bat.append ( "rd /s /q \"%APPDATA%\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rd /s /q \"%LOCALAPPDATA%\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rd /s /q \"%APPDATA%\\..\\Local\\Programs\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rd /s /q \"%ProgramData%\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rd /s /q \"C:\\Program Files\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rd /s /q \"%ProgramFiles(x86)%\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rem --- config do servico (roda como SYSTEM) ---\r\n" );
+        bat.append ( "rd /s /q \"%SystemRoot%\\System32\\config\\systemprofile\\AppData\\Roaming\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rd /s /q \"%SystemRoot%\\ServiceProfiles\\LocalService\\AppData\\Roaming\\RustDesk\" >nul 2>&1\r\n" );
+        bat.append ( "rem --- ultima limpeza do servico, se ainda existir ---\r\n" );
+        bat.append ( "sc stop rustdesk >nul 2>&1\r\n" );
+        bat.append ( "sc delete rustdesk >nul 2>&1\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "echo  RustDesk removido por completo.\r\n" );
+        bat.append ( "echo  Voce pode fechar esta janela.\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );

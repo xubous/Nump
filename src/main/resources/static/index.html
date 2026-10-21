@@ -193,6 +193,11 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
   background:transparent;color:var(--danger);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
 }
 .btn-encerrar:hover{background:rgba(239,68,68,.1)}
+.btn-desinstalar{
+  padding:7px 12px;border:1px solid rgba(239,68,68,.35);border-radius:var(--radius-sm);
+  background:rgba(239,68,68,.08);color:var(--danger);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
+}
+.btn-desinstalar:hover{background:rgba(239,68,68,.18)}
 .btn-wpp{
   padding:7px 12px;border:1px solid rgba(34,197,94,.25);border-radius:var(--radius-sm);
   background:transparent;color:var(--success);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;flex-shrink:0
@@ -697,6 +702,7 @@ function buildAcessoCard(a) {
       <button class="btn-wpp">WhatsApp</button>
       ${statusCls === "pendente" ? '<button class="btn-del">Cancelar</button>' : ""}
       ${statusCls !== "pendente" ? '<button class="btn-encerrar">Remover</button>' : ""}
+      ${statusCls === "consentido" ? '<button class="btn-desinstalar">Desinstalar RustDesk</button>' : ""}
     </div>
     ${statusCls === "consentido" && a.consentAt ? `
     <div class="acesso-audit">
@@ -762,7 +768,23 @@ function buildAcessoCard(a) {
   const btnEncerrar = li.querySelector(".btn-encerrar");
   if (btnEncerrar) btnEncerrar.onclick = () => removerAtendido(a.id, li, consentUrl, statusCls);
 
+  // "Desinstalar RustDesk": manda o cliente o link de desinstalação COMPLETA.
+  // Não remove o card — o técnico pode querer acompanhar o atendimento.
+  const btnDesinstalar = li.querySelector(".btn-desinstalar");
+  if (btnDesinstalar) btnDesinstalar.onclick = () => enviarDesinstalacao(consentUrl);
+
   return li;
+}
+
+// Abre o WhatsApp com a mensagem + o link do "Desinstalar RustDesk.bat",
+// que remove o RustDesk por completo da máquina do cliente.
+function enviarDesinstalacao(consentUrl) {
+  const linkDesinstalar = consentUrl.replace(/\/acessos\/([^/?]+).*$/, "/acessos/$1/desinstalar.bat");
+
+  const msg = "Olá! Para remover o RustDesk por completo deste computador, baixe e execute "
+            + "este arquivo (vai pedir permissão de administrador — clique em Sim): "
+            + linkDesinstalar;
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
 // Remove uma sessão já encerrada do painel (qualquer status que não seja

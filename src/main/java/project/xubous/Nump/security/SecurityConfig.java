@@ -62,7 +62,8 @@ public class SecurityConfig
                 // são explícitos aqui. GET /acessos (sem segmento) continua JWT.
                 //  - GET  /acessos/{token}            = página de consentimento
                 //  - POST /acessos/{token}/consentir  = registra o consentimento
-                //  - GET  /acessos/{token}/encerrar.bat = .bat que remove o acesso
+                //  - GET  /acessos/{token}/encerrar.bat    = .bat que revoga o acesso
+                //  - GET  /acessos/{token}/desinstalar.bat = .bat que remove o RustDesk
                 //  - GET  /acessos/ferramenta/{t}.bat   = ferramenta RustDesk
                 //  - GET  /acessos/ferramenta/{f}/senha = senha de uso único
                 .requestMatchers ( HttpMethod.GET,  "/acessos/*", "/acessos/*/*.bat",

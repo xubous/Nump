@@ -135,6 +135,21 @@
       transition: .2s;
     }
     .encerrar:hover { filter: brightness(1.2); }
+    .desinstalar {
+      display: block;
+      margin-top: 10px;
+      padding: 10px 14px;
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      border-radius: 10px;
+      background: transparent;
+      color: #f87171;
+      font-size: .8rem;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      transition: .2s;
+    }
+    .desinstalar:hover { background: rgba(248, 113, 113, 0.1); }
     .instrucao {
       margin-top: 10px;
       font-size: .85rem;
@@ -176,10 +191,18 @@
         1. Execute o arquivo baixado e clique em <b>Sim</b> quando o Windows pedir permissão.<br>
         2. O script instala e abre o RustDesk já com a senha de atendimento — <b>não precisa aceitar nada</b>.<br>
         3. Envie ao técnico o <b>ID</b> exibido e mantenha o RustDesk aberto até o fim do atendimento.<br>
-        4. <b>Ao final</b>, clique em <b>"Encerrar atendimento"</b> abaixo para remover o acesso remoto.
+        4. <b>Ao final</b>, clique em <b>"Encerrar atendimento"</b> abaixo para revogar o acesso remoto.
       </p>
       <a class="encerrar" id="btnEncerrar" style="display:none" href="#">
-        <i class="fa-solid fa-lock"></i> Encerrar atendimento (remover acesso remoto)
+        <i class="fa-solid fa-lock"></i> Encerrar atendimento (revogar acesso)
+      </a>
+      <p class="instrucao" style="margin-top:8px">
+        <b>Vai usar acesso remoto de novo?</b> Use o botão acima: ele revoga o acesso e
+        <b>mantém o RustDesk instalado</b> (o próximo atendimento é mais rápido).<br>
+        <b>Não vai usar mais?</b> Use o botão abaixo para <b>desinstalar o RustDesk por completo</b>.
+      </p>
+      <a class="desinstalar" id="btnDesinstalar" style="display:none" href="#">
+        <i class="fa-solid fa-trash-can"></i> Desinstalar o RustDesk por completo
       </a>
     </div>
   </main>
@@ -270,6 +293,8 @@
         document.getElementById("btnFerramenta").href = `/acessos/ferramenta/${token}.bat`;
         document.getElementById("btnEncerrar").style.display = "block";
         document.getElementById("btnEncerrar").href = `/acessos/${token}/encerrar.bat`;
+        document.getElementById("btnDesinstalar").style.display = "block";
+        document.getElementById("btnDesinstalar").href = `/acessos/${token}/desinstalar.bat`;
         document.getElementById("instrucao").style.display = "block";
       }
     }

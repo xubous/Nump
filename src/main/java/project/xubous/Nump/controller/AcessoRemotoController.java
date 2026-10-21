@@ -56,7 +56,8 @@ public class AcessoRemotoController
     // ── Rotas públicas do cliente ─────────────────────────────────────────────
 
     // GET /acessos/{token}/encerrar.bat — .bat de encerramento (rota pública).
-    // O cliente roda no fim do atendimento para remover o acesso remoto.
+    // O cliente roda no fim do atendimento para REVOGAR o acesso (senha/serviço),
+    // mantendo o RustDesk instalado para futuros atendimentos.
     @GetMapping ( "/{token}/encerrar.bat" )
     public ResponseEntity < byte [ ] > baixarEncerramento ( @PathVariable String token )
     {
@@ -64,6 +65,19 @@ public class AcessoRemotoController
 
         return ResponseEntity.ok ( )
                 .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Encerrar atendimento.bat\"" )
+                .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
+    }
+
+    // GET /acessos/{token}/desinstalar.bat — .bat de desinstalação completa (rota pública).
+    // Diferente do encerrar: REMOVE o RustDesk da máquina de vez. Para máquinas que
+    // quase não recebem acesso remoto.
+    @GetMapping ( "/{token}/desinstalar.bat" )
+    public ResponseEntity < byte [ ] > baixarDesinstalacao ( @PathVariable String token )
+    {
+        String bat = acessoRemotoService.gerarDesinstalacao ( token );
+
+        return ResponseEntity.ok ( )
+                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Desinstalar RustDesk.bat\"" )
                 .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
     }
 
