@@ -163,35 +163,53 @@ Volte no seu painel / lista de sessões (`GET /acessos`).
 Clique no botão **"Baixar ferramenta de acesso (Windows)"** (ou abra
 `http://localhost:8081/acessos/ferramenta/<TOKEN>.bat`).
 
-**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**; ao executar (num Windows), ele baixa o
-RustDesk **rápido** (barra de progresso do `curl`; se o `curl` faltar, usa BITS), instala em
-silêncio já com a **senha temporária** embutida (clique **Sim** no UAC uma vez), abre o RustDesk e
-mostra o **ID**. O técnico conecta com esse ID e a senha — **sem o cliente aceitar nada** ✅
+**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**. Ao executar (num Windows) ele
+**roda UMA vez só**: o `.bat` grava um script PowerShell embutido e o abre **elevado** com
+`-Wait` — você clica **1x em "Sim"** no UAC e a **mesma janela** segue mostrando o progresso.
+O PowerShell baixa o RustDesk rápido (`curl` com barra de progresso; BITS/`Invoke-WebRequest`
+como fallback), instala em silêncio, garante o serviço (`--install-service`) e aplica a
+**senha temporária** (`--password`). No fim ele abre o RustDesk, lê o **ID** (`--get-id`),
+**copia o ID para a área de transferência** e mostra na tela. O técnico conecta com esse ID e a
+senha — **sem o cliente aceitar nada** ✅
 
-**No fim do atendimento**, o cliente usa o botão **"Encerrar atendimento"** da página (ou o
-`Encerrar atendimento.bat`): apaga a senha, para o serviço e desinstala o RustDesk — o técnico
-**não conecta mais** (pode pedir UAC) ✅
+> **Uma execução só:** antes o `.bat` se reexecutava sem esperar e a janela do cliente fechava,
+> dando a impressão de "rodar 2 vezes". Agora é 1 clique no UAC e 1 janela de trabalho.
+
+**No fim do atendimento**, o cliente escolhe na página:
+
+| Botão | O que faz | Para quem |
+|-------|-----------|-----------|
+| **Encerrar atendimento** (`/acessos/<TOKEN>/encerrar.bat`) | limpa a senha e para o serviço — **o RustDesk continua instalado** | máquinas que serão acessadas de novo |
+| **Desinstalar o RustDesk por completo** (`/acessos/<TOKEN>/desinstalar.bat`) | roda `rustdesk.exe --uninstall` e ainda limpa as pastas de dados/SYSTEM — **remove de vez** | máquinas com pouco acesso remoto |
+
+> No painel do técnico, o card **Autorizado** mostra o **ID e a senha** com botões **Copiar**
+> (e "Copiar tudo"), e traz os dois botões: **Remover do painel** (limpa a lista e abre o
+> WhatsApp com o link de encerrar) e **Desinstalar RustDesk** (abre o WhatsApp com o link de
+> desinstalação completa). Os botões destrutivos ficam em **linha própria** para não confundir
+> com o botão de WhatsApp ao lado.
 
 > Teste também **antes do consentimento** (token ainda PENDENTE): deve recusar com
 > **"Autorize o acesso antes de baixar a ferramenta"** ✅
 >
 > Segurança (endurecido em 2026-10-20): o **link de acesso remoto tem 24 chars** (antes 8). O
-> endpoint `GET /acessos/ferramenta/{fToken}/senha` **não é mais usado pelo `.bat`** (a senha volta
-> embutida, formato comprovado em Windows real) — ficou como legado.
+> endpoint `GET /acessos/ferramenta/{fToken}/senha` **não é mais usado pelo `.bat`** (a senha vai
+> embutida no PowerShell gerado, formato comprovado em Windows real) — ficou como legado.
 
-### 4.7 Encerre o acesso remoto depois (opcional, `.bat` de encerramento)
+### 4.7 Encerre ou desinstale depois (opcional)
 
-Se o cliente fechou o script e mais tarde quiser remover o acesso, na mesma
-página o botão **"Encerrar atendimento (remover acesso remoto)"** (ou
-`http://localhost:8081/acessos/<TOKEN>/encerrar.bat`) limpa a senha, para o
-serviço e mata o RustDesk ✅
+Se o cliente fechou o script e mais tarde quiser revogar o acesso, na mesma página:
 
-> Teste também em token PENDENTE (não consentido): deve recusar com
+- **"Encerrar atendimento (revogar acesso)"** (`/acessos/<TOKEN>/encerrar.bat`) limpa a senha,
+  para o serviço e mata o RustDesk — **mantendo o programa instalado** ✅
+- **"Desinstalar o RustDesk por completo"** (`/acessos/<TOKEN>/desinstalar.bat`) faz a remoção
+  completa (exige admin, auto-eleva via UAC) ✅
+
+> Teste também em token PENDENTE (não consentido): ambos devem recusar com
 > **"Nenhum atendimento em andamento para este link"** ✅
 
 > 🎉 **Acabou de ver a F2 funcionando:** cliente autoriza → auditoria registrada →
-> RustDesk instalado com senha temporária → técnico conecta direto (acesso não atendido) →
-> cliente escolhe no fim (remover ou manter).
+> RustDesk instalado com senha temporária (1 execução só) → técnico conecta direto (acesso não
+> atendido) → cliente escolhe no fim (revogar mantendo ou desinstalar por completo).
 
 ---
 
