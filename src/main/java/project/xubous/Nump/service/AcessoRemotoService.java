@@ -33,10 +33,6 @@ public class AcessoRemotoService
     @Value ( "${app.rustdesk.download-url:https://github.com/rustdesk/rustdesk/releases/download/1.5.0/rustdesk-1.5.0-x86_64.exe}" )
     private String rustdeskDownloadUrl;
 
-    // Base pública do Nump — usada pelo .bat para buscar a senha na execução
-    @Value ( "${app.base-url:http://localhost:8080}" )
-    private String baseUrl;
-
     public AcessoRemotoService ( AcessoRemotoRepository acessoRemotoRepository,
                                  Shortener shortener,
                                  WebhookPublisher webhookPublisher )
@@ -216,12 +212,11 @@ public class AcessoRemotoService
     // ── Ferramenta RustDesk para o cliente baixar ─────────────────────────────
 
     // Gera o .bat que o cliente executa na máquina dele. Fluxo:
-    //   1. baixa o RustDesk RÁPIDO (curl com barra de progresso, não o lento
+    //   1. baixa o RustDesk RÁPIDO (curl -f com barra de progresso, não o lento
     //      Invoke-WebRequest do PowerShell; BITS/fallback se o curl faltar);
-    //   2. BUSCA a senha temporária no servidor (token de uso único) — o .bat
-    //      baixado NÃO carrega a senha em texto claro;
-    //   3. instala em silêncio com a senha já aplicada (cliente clica 1x "Sim");
-    //   4. abre o RustDesk e mostra o ID para o técnico.
+    //      em falha HTTP o arquivo parcial é apagado — não sobra .exe inválido;
+    //   2. instala em silêncio com a senha já aplicada (cliente clica 1x "Sim");
+    //   3. abre o RustDesk e mostra o ID para o técnico.
     // Resultado: ACESSO NÃO ATENDIDO — o técnico conecta direto com ID + senha,
     // sem o cliente precisar aceitar a conexão de novo.
     public String gerarFerramenta ( String token )
@@ -269,7 +264,7 @@ public class AcessoRemotoService
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
-        bat.append ( "  curl -L --progress-bar -o \"%INST%\" \"" + url + "\"\r\n" );
+        bat.append ( "  curl -fL --progress-bar -o \"%INST%\" \"" + url + "\" || del \"%INST%\" >nul 2>&1\r\n" );
         bat.append ( ")\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Tentando de novo com o download do Windows (BITS)...\r\n" );
@@ -297,7 +292,9 @@ public class AcessoRemotoService
         bat.append ( ":espera\r\n" );
         bat.append ( "timeout /t 3 >nul\r\n" );
         bat.append ( "set /a TENTATIVAS+=1\r\n" );
-        bat.append ( "for /f \"delims=\" %%i in ('\"%APP%\" --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
+        // aspas dobradas em %APP%: o cmd /c do for /f remove o 1o e o último
+        // aspas — sem elas o caminho com espaços (C:\Program Files\...) quebra
+        bat.append ( "for /f \"delims=\" %%i in ('\"\"%APP%\"\" --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
         bat.append ( "if defined ID goto mostraid\r\n" );
         bat.append ( "if %TENTATIVAS% LSS 15 goto espera\r\n" );
         bat.append ( "goto idmanual\r\n" );
@@ -370,15 +367,6 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":falhasenha\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Nao foi possivel obter a senha de atendimento.\r\n" );
-        bat.append ( "echo  O link pode ter expirado ou ja ter sido usado.\r\n" );
-        bat.append ( "echo  Peca ao tecnico para gerar um novo link.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "pause\r\n" );
-        bat.append ( "exit /b 1\r\n" );
         bat.append ( "\r\n" );
         bat.append ( ":falha\r\n" );
         bat.append ( "echo.\r\n" );

@@ -128,17 +128,19 @@ src/main/resources/
 | DELETE | `/acessos/{id}` | autenticado (dono) → cancela se pendente |
 | GET | `/acessos/{token}` | **público** → redirect `/consentimento.html` |
 | POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e o `ferramentaToken` (uso único), lê o ID do RustDesk do n8n (opcional) |
-| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso), **busca a senha no servidor** (não a carrega em texto claro), instala em silêncio com ela e, **no fim do atendimento, pergunta ao cliente** `[1] remover o acesso` / `[2] manter (senha vitalícia)` |
-| GET | `/acessos/ferramenta/{fToken}/senha` | **público / uso único** → troca o `ferramentaToken` pela senha em texto puro (o `.bat` chama isso na execução); 2ª chamada → 410 |
+| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl `-f` com progresso), instala em silêncio com a senha temporária já embutida e, **no fim do atendimento, pergunta ao cliente** `[1] remover o acesso` / `[2] manter (senha vitalícia)` |
+| GET | `/acessos/ferramenta/{fToken}/senha` | **público** → troca o `ferramentaToken` pela senha em texto puro (legado — o `.bat` atual **não** usa mais; ficou do endurecimento de 2026-10-20) |
 | GET | `/acessos/{token}/encerrar.bat` | **público** → `.bat` "Encerrar atendimento": o cliente roda ao fim para **remover o acesso remoto** (limpa a senha, para o serviço e mata o RustDesk) |
 
 > **Fluxo RustDesk (F2) — acesso NÃO ATENDIDO:** o `.bat` baixa o instalador oficial
 > (`app.rustdesk.download-url`, default RustDesk **1.5.0**; env `RUSTDESK_DOWNLOAD_URL`) usando
-> **`curl --progress-bar`** (rápido + dá feedback); se o `curl` não existir, cai para **BITS**
-> (`Start-BitsTransfer`). A **senha NÃO vai embutida no `.bat`**: o script a busca em
-> `GET /acessos/ferramenta/{fToken}/senha` (token de uso único, consumo único → 2ª vez 410);
-> depois `--silent-install --password <senha>` (cliente clica **1x** em "Sim" no UAC), abre o
-> RustDesk, espera o ID (`--get-id`, com retry) e mostra.
+> **`curl -fL --progress-bar`** (rápido + dá feedback; em falha HTTP o arquivo parcial é apagado);
+> se o `curl` não existir, cai para **BITS** (`Start-BitsTransfer`). A senha temporária vai
+> **embutida no `.bat`** (`--silent-install --password <senha>`, cliente clica **1x** em "Sim" no
+> UAC), abre o RustDesk, espera o ID (`--get-id`, com retry) e mostra.
+> ⚠️ A tentativa de buscar a senha no servidor em runtime (endpoint `/senha`, 2026-10-20) foi
+> **revertida** no commit `be863e9`: dependia de rede/`APP_BASE_URL` no PC do cliente e quebrava
+> o script antes mesmo do download. O `.bat` atual não faz nenhuma chamada além do download.
 > Resultado: o técnico conecta **direto com ID + senha**, sem o cliente aceitar a conexão.
 > **No fim do atendimento**, o próprio `.bat` abre um menu: **`1`** = remover o acesso (desinstala
 > o RustDesk, apaga a senha) ou **`2`** = manter o RustDesk instalado com a senha de atendimento
@@ -215,9 +217,10 @@ O autor usa uma formatação própria e consistente — **mantenha o estilo ao e
 - `JWT_SECRET` de produção deve ser aleatório (o atual é válido, 32 bytes, mas previsível).
   Gerar com: `openssl rand -base64 48` e definir no `.env` do servidor (nunca commitar).
 - **F2 endurecido (2026-10-20):** token do link de acesso remoto agora tem **24 chars**
-  (`SecureRandom`, ~2^120) em vez de 8; a **senha não vai mais em texto claro dentro do `.bat`** —
-  o script a busca em `GET /acessos/ferramenta/{fToken}/senha` (token de uso único; 2ª chamada 410).
-  Tokens de **arquivo/coleta continuam de 8 chars** (não mudou o F1).
+  (`SecureRandom`, ~2^120) em vez de 8. A senha chegou a ser retirada do `.bat` (busca via
+  `GET /acessos/ferramenta/{fToken}/senha`), mas isso **quebrava no cliente** (rede/`APP_BASE_URL`)
+  e foi **revertido** no `be863e9`: a senha volta embutida no `.bat` e o endpoint `/senha` ficou
+  como legado. Tokens de **arquivo/coleta continuam de 8 chars** (não mudou o F1).
 - **Encerramento do acesso remoto (2026-10-20):** o `.bat` "Encerrar atendimento"
   (`GET /acessos/{token}/encerrar.bat`) remove o acesso ao fim do atendimento — limpa a senha
   (`--password ""`), para o serviço (`--service-uninstall`) e mata o processo. A ferramenta e a
