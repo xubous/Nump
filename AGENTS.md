@@ -183,6 +183,11 @@ src/main/resources/
 > muda e ganha um pulso visual + aviso sonoro quando o ID chega. Senha/servidor continuam com
 > **Copiar** (a senha é secundária: o técnico conecta pelo **ID**). Os botões destrutivos ficam em
 > **linha própria** (`.acesso-acoes`) para não confundir com o botão de WhatsApp ao lado.
+> O botão **Remover do histórico** (`DELETE /acessos/{id}`) faz **hard delete** do registro (some do
+> painel de vez) e **não abre mais o WhatsApp** — antes ele mandava mensagem no `wa.me`, o que era
+> indesejado (2026-10-21). Pede **confirmação** (é irreversível) e o back-end dispara o webhook
+> **`acesso_removido`** ao n8n (best-effort) para o ticket lá também poder ser encerrado.
+> O WhatsApp ficou **só** no botão **Desinstalar RustDesk**, onde faz sentido mandar o link ao cliente.
 
 ### Fluxo de upload
 1. `Shortener.generateToken()` → token de 8 chars (UUID truncado).
@@ -307,8 +312,11 @@ O n8n pode conversar com o Nump de duas formas:
    - Upload de arquivo: `POST /files/upload` (multipart, campo `file`).
    - Criar link de coleta/sessão de acesso, listar arquivos, deletar.
 2. **Nump → n8n (entrada)**: o Nump **já emite webhooks** via `WebhookPublisher` (env
-   `N8N_WEBHOOK_URL`, **best-effort** — nunca quebra o fluxo principal). Dispara em download e no
-   consentimento de acesso remoto (F2). Sem `N8N_WEBHOOK_URL`, cai em silêncio/fallback.
+   `N8N_WEBHOOK_URL`, **best-effort** — nunca quebra o fluxo principal). Eventos: **`download`**,
+   **`acesso_consentido`** (F2, síncrono — a resposta do n8n pode trazer o `rustdeskId`) e
+   **`acesso_removido`** (quando o técnico clica em **Remover do histórico** —
+   payload `{ id, token, clienteEmail, status, rustdeskId }`, útil para o n8n fechar/apagar o
+   chamado dele). Sem `N8N_WEBHOOK_URL`, cai em silêncio/fallback.
 
 **Implementado (F1/F2):** upload com metadados (`description`, `expiraMinutos`, `maxDownloads`),
 link com expiração/revogação, `WebhookPublisher` (`N8N_WEBHOOK_URL`), endpoint público de

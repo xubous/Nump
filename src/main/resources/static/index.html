@@ -829,7 +829,7 @@ function buildAcessoCard(a) {
     </div>
     <div class="acesso-acoes">
       ${statusCls === "pendente" ? '<button type="button" class="btn-del">Cancelar</button>' : ""}
-      ${statusCls !== "pendente" ? '<button type="button" class="btn-encerrar">Remover do painel</button>' : ""}
+      ${statusCls !== "pendente" ? '<button type="button" class="btn-encerrar">Remover do histórico</button>' : ""}
       ${statusCls === "consentido" ? '<button type="button" class="btn-desinstalar">Desinstalar RustDesk</button>' : ""}
     </div>
     ${statusCls === "consentido" && a.consentAt ? `
@@ -911,17 +911,15 @@ function enviarDesinstalacao(consentUrl) {
 }
 
 // Remove uma sessão já encerrada do painel (qualquer status que não seja
-// PENDENTE) e, se houve consentimento, abre o WhatsApp com a mensagem pronta +
-// o link do "Encerrar atendimento.bat", que o cliente roda para desinstalar o
-// RustDesk da máquina dele.
+// PENDENTE). É uma remoção SILENCIOSA e definitiva: apaga o registro de vez
+// (DELETE /acessos/{id} → hard delete no back-end) e some com o card, sem abrir
+// WhatsApp. Por isso pede confirmação antes — diferente do antigo
+// "Remover do painel", que também mandava mensagem no WhatsApp.
 async function removerAtendido(id, el, consentUrl, statusCls) {
-  if (statusCls === "consentido") {
-    const linkEncerrar = consentUrl.replace(/\/acessos\/([^/?]+).*$/, "/acessos/$1/encerrar.bat");
-
-    const msg = "Olá! O atendimento remoto terminou. Para remover o acesso do seu computador, "
-              + "ok? Abra este link, baixe o arquivo \"Encerrar atendimento.bat\" e execute: "
-              + linkEncerrar;
-    window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+  const cliente = el.querySelector(".acesso-cliente")?.textContent?.trim() || "este atendimento";
+  if (! confirm("Remover " + cliente + " do histórico?\n\nO registro é apagado de vez do Nump (não dá para desfazer).\nO RustDesk na máquina do cliente NÃO é afetado por isto.") )
+  {
+    return;
   }
 
   await deleteAcesso(id, el);

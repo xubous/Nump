@@ -103,6 +103,16 @@ public class AcessoRemotoService
                     // "Encerrar atendimento.bat" rodado lá.
                     else
                     {
+                        // Avisa o n8n ANTES de apagar (best-effort, não bloqueia):
+                        // o n8n pode usar isto para fechar/apagar o chamado dele.
+                        Map < String, Object > payload = new HashMap < > ( );
+                        payload.put ( "id", acesso.getId ( ) );
+                        payload.put ( "token", acesso.getToken ( ) );
+                        payload.put ( "clienteEmail", acesso.getClienteEmail ( ) );
+                        payload.put ( "status", String.valueOf ( acesso.getStatus ( ) ) );
+                        payload.put ( "rustdeskId", acesso.getRustdeskId ( ) );
+                        webhookPublisher.publicar ( "acesso_removido", payload );
+
                         acessoRemotoRepository.delete ( acesso );
                     }
                 } );
