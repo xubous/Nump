@@ -245,11 +245,22 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        // URL do script PowerShell (rota pública). Usa mshta pra não deixar janela cmd aberta
+        // URL do script PowerShell (rota pública). Tudo pelo cmd/powershell padrão
         String baseUrl = appBaseUrl;
         String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
-        bat.append ( "mshta \"javascript:var sh=new ActiveXObject('WScript.Shell');var cmd='powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \\\"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$p=Join-Path $env:TEMP \\\\\"nump_atendimento.ps1\\\\\";try{curl.exe -L -s -o $p \\\\\"" + psUrl + "\\\\\"}catch{};if(-not(Test-Path $p)){try{Invoke-WebRequest -Uri \\\\\"" + psUrl + "\\\\\" -OutFile $p -UseBasicParsing}catch{}};if(Test-Path $p){Start-Process powershell -Verb RunAs -Wait -ArgumentList \\'-NoProfile\\',\\'-ExecutionPolicy\\',\\'Bypass\\',\\'-WindowStyle\\',\\'Normal\\',\\'-File\\',(\\\"\\\"\\\"'+$p+'\\\"\\\"\\\")}}else{Start-Process powershell -Verb RunAs -ArgumentList \\'-NoProfile\\',\\'-ExecutionPolicy\\',\\'Bypass\\',\\'-Command\\',\\'Write-Host \\\"Nao foi possivel baixar o script.\\\" -ForegroundColor Red; Start-Sleep 10\\'}\";sh.Run(cmd,0,false);close();\"\r\n" );
+        bat.append ( "@echo off\r\n" );
+        bat.append ( "set \"PS1=%TEMP%\\nump_atendimento.ps1\"\r\n" );
+        bat.append ( "curl -L -s -o \"%PS1%\" \"" + psUrl + "\"\r\n" );
+        bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
+        bat.append ( "if not exist \"%PS1%\" (\r\n" );
+        bat.append ( "  echo Nao foi possivel baixar o script de atendimento.\r\n" );
+        bat.append ( "  timeout /t 10 /nobreak >nul\r\n" );
+        bat.append ( "  exit /b 1\r\n" );
+        bat.append ( ")\r\n" );
+        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File','\"\"%PS1%\"\"'\"\r\n" );
+        bat.append ( "del \"%PS1%\" >nul 2>&1\r\n" );
+        bat.append ( "exit /b 0\r\n" );
 
         return bat.toString ( );
     }

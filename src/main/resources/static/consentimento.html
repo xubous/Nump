@@ -308,9 +308,12 @@
           try {
             // Roda script pra fechar tudo (RustDesk + janelas) sem script .bat
             try {
-              const ps = encodeURIComponent(`$ErrorActionPreference='SilentlyContinue';Get-Process rustdesk -ErrorAction SilentlyContinue | Stop-Process -Force;Stop-Service -Name RustDesk -Force -ErrorAction SilentlyContinue;sc.exe stop rustdesk >$null;sc.exe delete rustdesk >$null;Get-Process powershell -ErrorAction SilentlyContinue | Where-Object {$_.Id -ne $PID} | Stop-Process -Force -ErrorAction SilentlyContinue`);
-              const w = window.open(`mshta "javascript:var sh=new ActiveXObject('WScript.Shell');sh.Run('powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${btoa(unescape(encodeURIComponent(ps)))}',0,false);close();"`, "_blank", "width=1,height=1");
-              if (w) setTimeout(() => { try { w.close(); } catch(e){} }, 500);
+              const cmd = 'powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference=\'SilentlyContinue\';taskkill /F /IM rustdesk.exe /T;Stop-Service -Name RustDesk -Force;sc.exe stop rustdesk >nul 2>&1;sc.exe delete rustdesk >nul 2>&1"';
+              const w = window.open('data:text/plain,', '_blank');
+              if (w) {
+                w.document.write('<script>var sh=new ActiveXObject("WScript.Shell");sh.Run(' + JSON.stringify(cmd) + ',0,false);window.close();<\/script>');
+                setTimeout(() => { try { w.close(); } catch(e){} }, 1000);
+              }
             } catch(e) {}
 
             const res = await fetch(`/acessos/${token}/finalizar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
