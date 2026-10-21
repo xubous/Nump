@@ -709,6 +709,21 @@ public class AcessoRemotoService
         return limpo.isBlank ( ) ? null : limpo;
     }
 
+    // Cliente finaliza o acesso pela própria página — igual estilo "fechar sessão" do AnyDesk
+    @Transactional
+    public void finalizarPeloCliente ( String token )
+    {
+        acessoRemotoRepository.findByToken ( token )
+                .ifPresent ( ( acesso ) ->
+                {
+                    if ( acesso.getStatus ( ) == StatusAcessoRemoto.CONSENTIDO )
+                    {
+                        acesso.setStatus ( StatusAcessoRemoto.ENCERRADO );
+                        acessoRemotoRepository.save ( acesso );
+                    }
+                } );
+    }
+
     private String getCurrentUserEmail ( )
     {
         Authentication auth = SecurityContextHolder.getContext ( ).getAuthentication ( );

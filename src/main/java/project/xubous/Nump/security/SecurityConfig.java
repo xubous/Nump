@@ -72,6 +72,7 @@ public class SecurityConfig
                         "/acessos/ferramenta/*", "/acessos/ferramenta/*/*",
                         "/consentimento.html" ).permitAll ()
                 .requestMatchers ( HttpMethod.POST, "/acessos/*/consentir",
+                        "/acessos/*/finalizar",
                         "/acessos/ferramenta/*/id" ).permitAll ()
                 // admin
                 .requestMatchers ( HttpMethod.GET,    "/users" ).hasRole ( "ADMIN" )

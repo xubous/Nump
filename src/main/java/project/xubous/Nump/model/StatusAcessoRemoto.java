@@ -6,5 +6,6 @@ public enum StatusAcessoRemoto
     PENDENTE,    // link gerado, aguardando o cliente autorizar
     CONSENTIDO,  // cliente autorizou — sessão liberada
     EXPIRADO,    // passou do prazo sem autorizar
-    CANCELADO    // técnico cancelou antes do consentimento
+    CANCELADO,   // técnico cancelou antes do consentimento
+    ENCERRADO    // cliente finalizou o acesso pela própria página (sem .bat)
 }

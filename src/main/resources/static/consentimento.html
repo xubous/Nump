@@ -192,19 +192,14 @@
         <b>2) Clique em <b>Sim</b></b> quando o Windows pedir permissão de administrador.<br>
         <b>3) Pronto!</b> O script já instala/configura tudo, aplica a senha e <b>envia o código de acesso ao técnico automaticamente</b>.<br>
         <b>4)</b> Mantenha o RustDesk aberto até o fim do atendimento.<br>
-        <b>5)</b> Ao final, use os botões abaixo para <b>encerrar</b> ou <b>desinstalar</b> o acesso.
+        <b>5)</b> Ao final, basta clicar em <b>"Finalizar acesso remoto"</b> abaixo.
       </p>
-      <a class="encerrar" id="btnEncerrar" style="display:none" href="#">
-        <i class="fa-solid fa-lock"></i> Encerrar atendimento (revogar acesso)
-      </a>
-      <p class="instrucao" style="margin-top:8px">
-        <b>Vai usar acesso remoto de novo?</b> Use o botão acima: ele revoga o acesso e
-        <b>mantém o RustDesk instalado</b> (o próximo atendimento é mais rápido).<br>
-        <b>Não vai usar mais?</b> Use o botão abaixo para <b>desinstalar o RustDesk por completo</b>.
+      <button class="auth" id="btnFinalizar" style="display:none; margin-top:14px; background:linear-gradient(135deg,#22c55e,#16a34a)">
+        <i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto
+      </button>
+      <p class="instrucao" id="msgFinalizado" style="display:none; margin-top:12px; color:#4ade80; font-weight:600">
+        <i class="fa-solid fa-circle-check"></i> Acesso remoto finalizado com sucesso.
       </p>
-      <a class="desinstalar" id="btnDesinstalar" style="display:none" href="#">
-        <i class="fa-solid fa-trash-can"></i> Desinstalar o RustDesk por completo
-      </a>
     </div>
   </main>
 
@@ -302,11 +297,30 @@
         const btnFerramenta = document.getElementById("btnFerramenta");
         btnFerramenta.style.display = "block";
         btnFerramenta.href = ferramentaUrl;
-        document.getElementById("btnEncerrar").style.display = "block";
-        document.getElementById("btnEncerrar").href = `/acessos/${token}/encerrar.bat`;
-        document.getElementById("btnDesinstalar").style.display = "block";
-        document.getElementById("btnDesinstalar").href = `/acessos/${token}/desinstalar.bat`;
         document.getElementById("instrucao").style.display = "block";
+
+        const btnFinalizar = document.getElementById("btnFinalizar");
+        const msgFinalizado = document.getElementById("msgFinalizado");
+        btnFinalizar.style.display = "block";
+        btnFinalizar.onclick = async function() {
+          btnFinalizar.disabled = true;
+          btnFinalizar.textContent = "Finalizando...";
+          try {
+            const res = await fetch(`/acessos/${token}/finalizar`, { method: "POST" });
+            if (res.ok) {
+              btnFinalizar.style.display = "none";
+              msgFinalizado.style.display = "block";
+            } else {
+              btnFinalizar.disabled = false;
+              btnFinalizar.textContent = "Finalizar acesso remoto";
+              alert("Não foi possível finalizar agora. Tente novamente.");
+            }
+          } catch (e) {
+            btnFinalizar.disabled = false;
+            btnFinalizar.textContent = "Finalizar acesso remoto";
+            alert("Não foi possível finalizar agora. Tente novamente.");
+          }
+        };
 
         // BAIXA AUTOMÁTICO assim que autorizar — o cliente só precisa executar o arquivo
         try {

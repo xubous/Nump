@@ -154,6 +154,14 @@ public class AcessoRemotoController
         return ResponseEntity.ok ( resultado );
     }
 
+    // POST /acessos/{token}/finalizar — cliente finaliza o acesso pela própria página (sem .bat)
+    @PostMapping ( "/{token}/finalizar" )
+    public ResponseEntity < Map < String, Object > > finalizar ( @PathVariable String token )
+    {
+        acessoRemotoService.finalizarPeloCliente ( token );
+        return ResponseEntity.ok ( Map.of ( "ok", true ) );
+    }
+
     // Extrai o IP real considerando proxy reverso (X-Forwarded-For)
     private String ipDoRequest ( HttpServletRequest request )
     {
