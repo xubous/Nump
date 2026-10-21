@@ -185,14 +185,14 @@
       <div id="dados-sessao"></div>
       <button class="copiar" id="copiarBtn" style="display:none">Copiar dados</button>
       <a class="ferramenta" id="btnFerramenta" style="display:none" href="#">
-        <i class="fa-solid fa-download"></i> Baixar ferramenta de acesso (Windows)
+        <i class="fa-solid fa-download"></i> Baixar novamente se não iniciou
       </a>
       <p class="instrucao" id="instrucao" style="display:none">
-        1. Execute o arquivo baixado e clique em <b>Sim</b> quando o Windows pedir permissão.<br>
-        2. <b>Já tem o RustDesk instalado?</b> O script detecta e pula a instalação — vai direto para a configuração.<br>
-        3. O script aplica a senha de atendimento e <b>envia o seu código de acesso ao técnico automaticamente</b> — você <b>não precisa digitar nem copiar nada</b>.<br>
-        4. Mantenha o RustDesk aberto até o fim do atendimento.<br>
-        5. <b>Ao final</b>, clique em <b>"Encerrar atendimento"</b> abaixo para revogar o acesso remoto.
+        <b>1) Execute o arquivo baixado</b> (<b>CLIQUE_AQUI_PARA_CONECTAR.bat</b>) na pasta Downloads.<br>
+        <b>2) Clique em <b>Sim</b></b> quando o Windows pedir permissão de administrador.<br>
+        <b>3) Pronto!</b> O script já instala/configura tudo, aplica a senha e <b>envia o código de acesso ao técnico automaticamente</b>.<br>
+        <b>4)</b> Mantenha o RustDesk aberto até o fim do atendimento.<br>
+        <b>5)</b> Ao final, use os botões abaixo para <b>encerrar</b> ou <b>desinstalar</b> o acesso.
       </p>
       <a class="encerrar" id="btnEncerrar" style="display:none" href="#">
         <i class="fa-solid fa-lock"></i> Encerrar atendimento (revogar acesso)
@@ -298,13 +298,27 @@
 
       // ferramenta RustDesk: sempre disponível após o consentimento
       if (token) {
-        document.getElementById("btnFerramenta").style.display = "block";
-        document.getElementById("btnFerramenta").href = `/acessos/ferramenta/${token}.bat`;
+        const ferramentaUrl = `/acessos/ferramenta/${token}.bat`;
+        const btnFerramenta = document.getElementById("btnFerramenta");
+        btnFerramenta.style.display = "block";
+        btnFerramenta.href = ferramentaUrl;
         document.getElementById("btnEncerrar").style.display = "block";
         document.getElementById("btnEncerrar").href = `/acessos/${token}/encerrar.bat`;
         document.getElementById("btnDesinstalar").style.display = "block";
         document.getElementById("btnDesinstalar").href = `/acessos/${token}/desinstalar.bat`;
         document.getElementById("instrucao").style.display = "block";
+
+        // BAIXA AUTOMÁTICO assim que autorizar — o cliente só precisa executar o arquivo
+        try {
+          const a = document.createElement("a");
+          a.href = ferramentaUrl;
+          a.download = "CLIQUE_AQUI_PARA_CONECTAR.bat";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch (e) {
+          // se o navegador bloquear o auto-download, o botão continua visível
+        }
       }
     }
 
