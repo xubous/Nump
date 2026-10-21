@@ -240,6 +240,12 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 .acesso-status.cancelado {background:rgba(148,163,184,.12);color:var(--muted)}
 .acesso-status.expirado  {background:rgba(239,68,68,.12);color:var(--danger)}
 .acesso-bottom{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* Ações destrutivas em linha própria, separadas dos botões de compartilhar
+   (Copiar/WhatsApp). Evita clique errado no botão vizinho quando a linha quebra. */
+.acesso-acoes{
+  margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center
+}
 .acesso-audit{
   margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);
   color:var(--muted);font-size:.78rem;line-height:1.5
@@ -698,11 +704,13 @@ function buildAcessoCard(a) {
     </div>
     <div class="acesso-bottom">
       <span class="file-link" title="${escapeAttr(a.consentUrl || "")}">${escapeHtml(a.consentUrl || "")}</span>
-      <button class="btn-copy">Copiar</button>
-      <button class="btn-wpp">WhatsApp</button>
-      ${statusCls === "pendente" ? '<button class="btn-del">Cancelar</button>' : ""}
-      ${statusCls !== "pendente" ? '<button class="btn-encerrar">Remover</button>' : ""}
-      ${statusCls === "consentido" ? '<button class="btn-desinstalar">Desinstalar RustDesk</button>' : ""}
+      <button type="button" class="btn-copy">Copiar</button>
+      <button type="button" class="btn-wpp">WhatsApp</button>
+    </div>
+    <div class="acesso-acoes">
+      ${statusCls === "pendente" ? '<button type="button" class="btn-del">Cancelar</button>' : ""}
+      ${statusCls !== "pendente" ? '<button type="button" class="btn-encerrar">Remover do painel</button>' : ""}
+      ${statusCls === "consentido" ? '<button type="button" class="btn-desinstalar">Desinstalar RustDesk</button>' : ""}
     </div>
     ${statusCls === "consentido" && a.consentAt ? `
     <div class="acesso-audit">
@@ -754,24 +762,25 @@ function buildAcessoCard(a) {
     setTimeout(() => { this.textContent = "Copiar"; this.classList.remove("ok"); }, 2000);
   };
 
-  li.querySelector(".btn-wpp").onclick = () => {
+  li.querySelector(".btn-wpp").onclick = (e) => {
+    e.stopPropagation();
     const msg = "Olá! Aqui está o link para autorizar o acesso remoto ao seu computador: " + consentUrl;
     window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
   };
 
   const btnCancelar = li.querySelector(".btn-del");
-  if (btnCancelar) btnCancelar.onclick = () => cancelarAcesso(a.id, li);
+  if (btnCancelar) btnCancelar.onclick = (e) => { e.stopPropagation(); cancelarAcesso(a.id, li); };
 
   // Já atendido (ou expirado/cancelado): "Remover" limpa o painel e, se houve
   // consentimento, oferece o link de encerramento
   // (o Nump não desinstala o RustDesk da máquina do cliente — isso é o .bat)
   const btnEncerrar = li.querySelector(".btn-encerrar");
-  if (btnEncerrar) btnEncerrar.onclick = () => removerAtendido(a.id, li, consentUrl, statusCls);
+  if (btnEncerrar) btnEncerrar.onclick = (e) => { e.stopPropagation(); removerAtendido(a.id, li, consentUrl, statusCls); };
 
   // "Desinstalar RustDesk": manda o cliente o link de desinstalação COMPLETA.
   // Não remove o card — o técnico pode querer acompanhar o atendimento.
   const btnDesinstalar = li.querySelector(".btn-desinstalar");
-  if (btnDesinstalar) btnDesinstalar.onclick = () => enviarDesinstalacao(consentUrl);
+  if (btnDesinstalar) btnDesinstalar.onclick = (e) => { e.stopPropagation(); enviarDesinstalacao(consentUrl); };
 
   return li;
 }
