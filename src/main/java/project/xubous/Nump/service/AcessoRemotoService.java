@@ -242,18 +242,9 @@ public class AcessoRemotoService
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
-        bat.append ( "setlocal enableextensions\r\n" );
-        // Rede de segurança: o corpo roda dentro de :main (via call). Se algo
-        // abortar de forma inesperada, o cmd volta aqui e a janela NÃO fecha —
-        // mostra a mensagem e espera o cliente ler.
-        bat.append ( "call :main\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Atendimento encerrado. Voce pode fechar esta janela.\r\n" );
-        bat.append ( "pause\r\n" );
-        bat.append ( "endlocal\r\n" );
-        bat.append ( "exit /b 0\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":main\r\n" );
+        // Estrutura linear (igual à versão comprovada em Windows real): sem
+        // call :main / setlocal / wrapper. O corpo roda direto e cada saída
+        // termina em pause — a janela não fecha silenciosamente.
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo   Atendimento remoto seguro - Nump\r\n" );
