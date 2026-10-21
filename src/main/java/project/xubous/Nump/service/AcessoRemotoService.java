@@ -268,10 +268,10 @@ public class AcessoRemotoService
         // fallback: se o curl falhar, tenta de novo pelo PowerShell
         bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
         bat.append ( "if not exist \"%PS1%\" goto sempoder\r\n" );
-        // Eleva e ESPERA (-Wait): uma única janela de trabalho.
-        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','%PS1%'\"\r\n" );
-        bat.append ( "del \"%PS1%\" >nul 2>&1\r\n" );
-        bat.append ( "exit /b 0\r\n" );
+        // Eleva e fecha o .bat na hora: só a janela elevada fica visível.
+        // O cliente clica 1x em "Sim" no UAC e acompanha pelo PowerShell elevado.
+        bat.append ( "start \"\" powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File','\"\"%PS1%\"\"'; Remove-Item -Path '\"\"%PS1%\"\"' -Force -ErrorAction SilentlyContinue\"\r\n" );
+        bat.append ( "exit\r\n" );
         bat.append ( "\r\n" );
         bat.append ( ":sempoder\r\n" );
         bat.append ( "echo.\r\n" );
