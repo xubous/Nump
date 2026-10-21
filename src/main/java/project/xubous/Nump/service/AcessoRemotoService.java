@@ -250,17 +250,8 @@ public class AcessoRemotoService
         String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
-        bat.append ( "set \"PS1=%TEMP%\\nump_atendimento.ps1\"\r\n" );
-        bat.append ( "curl -L -s -o \"%PS1%\" \"" + psUrl + "\"\r\n" );
-        bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
-        bat.append ( "if not exist \"%PS1%\" (\r\n" );
-        bat.append ( "  echo Nao foi possivel baixar o script de atendimento.\r\n" );
-        bat.append ( "  timeout /t 10 /nobreak >nul\r\n" );
-        bat.append ( "  exit /b 1\r\n" );
-        bat.append ( ")\r\n" );
-        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File','\"\"%PS1%\"\"'\"\r\n" );
-        bat.append ( "del \"%PS1%\" >nul 2>&1\r\n" );
-        bat.append ( "exit /b 0\r\n" );
+        bat.append ( "start /b cmd /c \"set PS1=%TEMP%\\nump_atendimento.ps1 && curl -L -s -o \\\"%%PS1%%\\\" \\\"" + psUrl + "\\\" && if not exist \\\"%%PS1%%\\\" powershell -NoProfile -ExecutionPolicy Bypass -Command \\\"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%%PS1%%' -UseBasicParsing\\\" && if exist \\\"%%PS1%%\\\" powershell -NoProfile -ExecutionPolicy Bypass -Command \\\"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File','\"\"%%PS1%%\"\"' && del \\\"%%PS1%%\\\" >nul 2>&1\"\r\n" );
+        bat.append ( "exit\r\n" );
 
         return bat.toString ( );
     }

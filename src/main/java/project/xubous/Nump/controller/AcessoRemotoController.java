@@ -158,8 +158,15 @@ public class AcessoRemotoController
     @PostMapping ( "/{token}/finalizar" )
     public ResponseEntity < Map < String, Object > > finalizar ( @PathVariable String token )
     {
-        acessoRemotoService.finalizarPeloCliente ( token );
-        return ResponseEntity.ok ( Map.of ( "ok", true ) );
+        try
+        {
+            acessoRemotoService.finalizarPeloCliente ( token );
+            return ResponseEntity.ok ( Map.of ( "ok", true ) );
+        }
+        catch ( Exception e )
+        {
+            return ResponseEntity.status ( 500 ).body ( Map.of ( "ok", false, "message", e.getMessage ( ) == null ? "erro" : e.getMessage ( ) ) );
+        }
     }
 
     // Extrai o IP real considerando proxy reverso (X-Forwarded-For)
