@@ -236,8 +236,18 @@ public class AcessoRemotoService
 
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
-        bat.append ( "chcp 65001 >nul\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
+        bat.append ( "rem --- Auto-elevacao: sem admin o RustDesk instala por usuario e NAO ---\r\n" );
+        bat.append ( "rem --- aplica a senha nem instala o servico (acesso nao atendido).   ---\r\n" );
+        bat.append ( "net session >nul 2>&1\r\n" );
+        bat.append ( "if %errorlevel% neq 0 (\r\n" );
+        bat.append ( "  echo.\r\n" );
+        bat.append ( "  echo  Nump vai pedir permissao de administrador.\r\n" );
+        bat.append ( "  echo  Clique em SIM na janela do Windows para continuar.\r\n" );
+        bat.append ( "  echo.\r\n" );
+        bat.append ( "  powershell -NoProfile -Command \"Start-Process -FilePath '%~f0' -Verb RunAs\"\r\n" );
+        bat.append ( "  exit /b\r\n" );
+        bat.append ( ")\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo   Atendimento remoto seguro - Nump\r\n" );
@@ -247,23 +257,38 @@ public class AcessoRemotoService
         bat.append ( "set \"INST=%PASTA%\\rustdesk_setup.exe\"\r\n" );
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
-        bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
+        bat.append ( "  echo  Baixando o RustDesk ~26 MB. A barra abaixo mostra o progresso.\r\n" );
         bat.append ( "  curl -L --progress-bar -o \"%INST%\" \"" + url + "\"\r\n" );
         bat.append ( ")\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
-        bat.append ( "  echo  Tentando de novo com o download do Windows (BITS)...\r\n" );
+        bat.append ( "  echo  Tentando de novo com o download do Windows BITS...\r\n" );
         bat.append ( "  powershell -NoProfile -Command \"Import-Module BitsTransfer; Start-BitsTransfer -Source '" + url + "' -Destination '%INST%'\"\r\n" );
         bat.append ( ")\r\n" );
         bat.append ( "if not exist \"%INST%\" goto falha\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Instalando o RustDesk com a senha de atendimento...\r\n" );
-        bat.append ( "echo  O Windows vai pedir permissao (UAC) - clique em \"Sim\".\r\n" );
-        bat.append ( "start /wait \"\" \"%INST%\" --silent-install --password " + senha + "\r\n" );
+        bat.append ( "echo  Instalando o RustDesk (pode aparecer uma janela de progresso)...\r\n" );
+        // O instalador IGNORA o --password (bug conhecido do RustDesk). A senha
+        // precisa ser aplicada DEPOIS, pelo rustdesk.exe ja instalado — e elevado,
+        // porque o servico roda como SYSTEM. Fluxo igual ao script oficial.
+        bat.append ( "start /wait \"\" \"%INST%\" --silent-install\r\n" );
+        bat.append ( "ping -n 12 127.0.0.1 >nul\r\n" );
+        // Caminho do install elevado (%ProgramFiles%) e do install por usuario.
         bat.append ( "set \"APP=\"\r\n" );
-        bat.append ( "if exist \"C:\\Program Files\\RustDesk\\rustdesk.exe\" set \"APP=C:\\Program Files\\RustDesk\\rustdesk.exe\"\r\n" );
-        bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if exist \"%ProgramFiles%\\RustDesk\\rustdesk.exe\" set \"APP=%ProgramFiles%\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP if exist \"%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\" set \"APP=%ProgramFiles(x86)%\\RustDesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\rustdesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\rustdesk\\rustdesk.exe\"\r\n" );
+        bat.append ( "if not defined APP if exist \"%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\" set \"APP=%LOCALAPPDATA%\\Programs\\RustDesk\\rustdesk.exe\"\r\n" );
         bat.append ( "if not defined APP goto falha\r\n" );
+        // Separa pasta + nome do exe: evita a dor de aspas do for /f quando o
+        // caminho tem espacos ("C:\Program Files\..."). pushd + nome puro resolve.
+        bat.append ( "for %%A in (\"%APP%\") do set \"APPDIR=%%~dpA\" & set \"APPEXE=%%~nxA\"\r\n" );
+        bat.append ( "pushd \"%APPDIR%\"\r\n" );
+        // Garante o servico (acesso nao atendido precisa dele rodando)
+        bat.append ( "%APPEXE% --install-service >nul 2>&1\r\n" );
+        bat.append ( "ping -n 8 127.0.0.1 >nul\r\n" );
+        // Aplica a senha de atendimento (agora sim, no exe instalado)
+        bat.append ( "%APPEXE% --password " + senha + " >nul 2>&1\r\n" );
+        bat.append ( "ping -n 3 127.0.0.1 >nul\r\n" );
         if ( servidor != null )
         {
             bat.append ( "set \"RUSTDESK_API_HOST=" + servidor + "\"\r\n" );
@@ -276,7 +301,7 @@ public class AcessoRemotoService
         bat.append ( ":espera\r\n" );
         bat.append ( "timeout /t 3 >nul\r\n" );
         bat.append ( "set /a TENTATIVAS+=1\r\n" );
-        bat.append ( "for /f \"delims=\" %%i in ('\"%APP%\" --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
+        bat.append ( "for /f \"delims=\" %%i in ('%APPEXE% --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
         bat.append ( "if defined ID goto mostraid\r\n" );
         bat.append ( "if %TENTATIVAS% LSS 15 goto espera\r\n" );
         bat.append ( "goto idmanual\r\n" );
@@ -298,7 +323,7 @@ public class AcessoRemotoService
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  O RustDesk ainda nao mostrou o ID aqui. Faca assim:\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "echo  1. Abra o RustDesk (procure no menu Iniciar).\r\n" );
+        bat.append ( "echo  1. Abra o RustDesk. Procure no menu Iniciar.\r\n" );
         bat.append ( "echo  2. Envie ao tecnico o ID exibido na janela.\r\n" );
         bat.append ( "echo  3. Mantenha aberto ate o atendimento acabar.\r\n" );
         bat.append ( "echo.\r\n" );
