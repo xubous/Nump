@@ -198,7 +198,7 @@
         <i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto
       </button>
       <p class="instrucao" id="msgFinalizado" style="display:none; margin-top:12px; color:#4ade80; font-weight:600">
-        <i class="fa-solid fa-circle-check"></i> Acesso remoto finalizado com sucesso.
+        <i class="fa-solid fa-circle-check"></i> Acesso remoto finalizado com sucesso. Pode fechar esta janela.
       </p>
     </div>
   </main>
@@ -304,21 +304,29 @@
         btnFinalizar.style.display = "block";
         btnFinalizar.onclick = async function() {
           btnFinalizar.disabled = true;
-          btnFinalizar.textContent = "Finalizando...";
+          btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizando...';
           try {
-            const res = await fetch(`/acessos/${token}/finalizar`, { method: "POST" });
+            // Roda script pra fechar tudo (RustDesk + janelas) sem script .bat
+            try {
+              const ps = encodeURIComponent(`$ErrorActionPreference='SilentlyContinue';Get-Process rustdesk -ErrorAction SilentlyContinue | Stop-Process -Force;Stop-Service -Name RustDesk -Force -ErrorAction SilentlyContinue;sc.exe stop rustdesk >$null;sc.exe delete rustdesk >$null;Get-Process powershell -ErrorAction SilentlyContinue | Where-Object {$_.Id -ne $PID} | Stop-Process -Force -ErrorAction SilentlyContinue`);
+              const w = window.open(`mshta "javascript:var sh=new ActiveXObject('WScript.Shell');sh.Run('powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${btoa(unescape(encodeURIComponent(ps)))}',0,false);close();"`, "_blank", "width=1,height=1");
+              if (w) setTimeout(() => { try { w.close(); } catch(e){} }, 500);
+            } catch(e) {}
+
+            const res = await fetch(`/acessos/${token}/finalizar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
             if (res.ok) {
               btnFinalizar.style.display = "none";
               msgFinalizado.style.display = "block";
             } else {
+              const txt = await res.text().catch(()=>"");
               btnFinalizar.disabled = false;
-              btnFinalizar.textContent = "Finalizar acesso remoto";
-              alert("Não foi possível finalizar agora. Tente novamente.");
+              btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto';
+              alert("Não foi possível finalizar agora. (" + res.status + ") " + txt);
             }
           } catch (e) {
             btnFinalizar.disabled = false;
-            btnFinalizar.textContent = "Finalizar acesso remoto";
-            alert("Não foi possível finalizar agora. Tente novamente.");
+            btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto';
+            alert("Não foi possível finalizar agora. Verifique a conexão.");
           }
         };
 

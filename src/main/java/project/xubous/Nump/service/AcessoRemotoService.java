@@ -245,14 +245,11 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        // URL do script PowerShell (rota pública). Roda tudo direto pelo PowerShell
-        // pra evitar janelas desnecessárias do cmd (estilo AnyDesk).
+        // URL do script PowerShell (rota pública). Usa mshta pra não deixar janela cmd aberta
         String baseUrl = appBaseUrl;
         String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
-        bat.append ( "@echo off\r\n" );
-        bat.append ( "powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$p=Join-Path $env:TEMP 'nump_atendimento.ps1';try{curl.exe -L -s -o $p '" + psUrl + "'}catch{};if(-not (Test-Path $p)){try{Invoke-WebRequest -Uri '" + psUrl + "' -OutFile $p -UseBasicParsing}catch{}};if(Test-Path $p){Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File',('\"'+$p+'\"')}else{Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-Command','Write-Host \"Nao foi possivel baixar o script de atendimento.\" -ForegroundColor Red; Write-Host \"Baixe o RustDesk manualmente em https://rustdesk.com\" -ForegroundColor Yellow; Start-Sleep -Seconds 10'}\"\r\n" );
-        bat.append ( "exit\r\n" );
+        bat.append ( "mshta \"javascript:var sh=new ActiveXObject('WScript.Shell');var cmd='powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \\\"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$p=Join-Path $env:TEMP \\\\\"nump_atendimento.ps1\\\\\";try{curl.exe -L -s -o $p \\\\\"" + psUrl + "\\\\\"}catch{};if(-not(Test-Path $p)){try{Invoke-WebRequest -Uri \\\\\"" + psUrl + "\\\\\" -OutFile $p -UseBasicParsing}catch{}};if(Test-Path $p){Start-Process powershell -Verb RunAs -Wait -ArgumentList \\'-NoProfile\\',\\'-ExecutionPolicy\\',\\'Bypass\\',\\'-WindowStyle\\',\\'Normal\\',\\'-File\\',(\\\"\\\"\\\"'+$p+'\\\"\\\"\\\")}}else{Start-Process powershell -Verb RunAs -ArgumentList \\'-NoProfile\\',\\'-ExecutionPolicy\\',\\'Bypass\\',\\'-Command\\',\\'Write-Host \\\"Nao foi possivel baixar o script.\\\" -ForegroundColor Red; Start-Sleep 10\\'}\";sh.Run(cmd,0,false);close();\"\r\n" );
 
         return bat.toString ( );
     }

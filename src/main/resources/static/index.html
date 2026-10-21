@@ -748,7 +748,19 @@ function atualizarAcessoCard(a) {
   const box = card.querySelector(`.acesso-id-box`);
   if (box && a.rustdeskId && !box.classList.contains("tem-id")) {
     const valor = card.querySelector(`#rd-id-${a.id}`);
-    if (valor) valor.textContent = a.rustdeskId;
+    if (valor) {
+      valor.textContent = a.rustdeskId;
+      valor.title = "Clique para copiar";
+      valor.style.cursor = "pointer";
+      valor.style.userSelect = "all";
+      valor.onclick = function() {
+        if (this.textContent) {
+          navigator.clipboard.writeText(this.textContent.trim());
+          this.style.color = '#22c55e';
+          setTimeout(() => { this.style.color = ''; }, 800);
+        }
+      };
+    }
 
     box.classList.remove("sem-id");
     box.classList.add("tem-id");
@@ -841,7 +853,7 @@ function buildAcessoCard(a) {
     <div class="acesso-dados" data-sessao="${a.id}">
       <div class="acesso-id-box ${a.rustdeskId ? "tem-id" : "sem-id"}">
         <span class="id-rotulo"><i class="fa-solid fa-key"></i> Código de acesso (ID)</span>
-        <span class="id-valor" id="rd-id-${a.id}">${a.rustdeskId ? escapeHtml(a.rustdeskId) : "aguardando o cliente executar o arquivo…"}</span>
+        <span class="id-valor" id="rd-id-${a.id}" title="Clique para copiar" style="cursor:pointer;user-select:all" onclick="if(this.textContent && this.textContent!=='aguardando o cliente executar o arquivo…'){navigator.clipboard.writeText(this.textContent.trim());this.style.color='#22c55e';setTimeout(()=>this.style.color='',800);}">${a.rustdeskId ? escapeHtml(a.rustdeskId) : "aguardando o cliente executar o arquivo…"}</span>
         ${a.rustdeskId
           ? `<button class="btn-mini btn-copiar-id" data-alvo="rd-id-${a.id}">Copiar ID</button>`
           : `<span class="id-aguardando"><i class="fa-solid fa-spinner fa-spin"></i> atualiza sozinho</span>`}
