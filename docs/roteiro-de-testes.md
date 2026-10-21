@@ -163,31 +163,27 @@ Volte no seu painel / lista de sessões (`GET /acessos`).
 Clique no botão **"Baixar ferramenta de acesso (Windows)"** (ou abra
 `http://localhost:8081/acessos/ferramenta/<TOKEN>.bat`).
 
-**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**; ao executar (num Windows), ele **busca a
-senha de atendimento no servidor** (token de uso único — a senha **não** vai em texto claro no
-`.bat`), baixa o RustDesk **rápido** (barra de progresso do `curl`; se o `curl` faltar, usa BITS),
-instala em silêncio já com a **senha temporária** (clique **Sim** no UAC uma vez), abre o RustDesk e
+**Você deve ver:** baixa o arquivo **`Suporte Nump.bat`**; ao executar (num Windows), ele baixa o
+RustDesk **rápido** (barra de progresso do `curl`; se o `curl` faltar, usa BITS), instala em
+silêncio já com a **senha temporária** embutida (clique **Sim** no UAC uma vez), abre o RustDesk e
 mostra o **ID**. O técnico conecta com esse ID e a senha — **sem o cliente aceitar nada** ✅
 
-**No fim do atendimento**, o `.bat` mostra um menu e espera a escolha do cliente:
-
-| Tecla | O que acontece |
-|---|---|
-| **`1`** | **Remove o acesso**: apaga a senha, para o serviço e desinstala o RustDesk — o técnico **não conecta mais** (pode pedir UAC) |
-| **`2`** | **Mantém o acesso**: RustDesk fica instalado com a **senha de atendimento** (acesso permanente — a senha não expira) |
+**No fim do atendimento**, o cliente usa o botão **"Encerrar atendimento"** da página (ou o
+`Encerrar atendimento.bat`): apaga a senha, para o serviço e desinstala o RustDesk — o técnico
+**não conecta mais** (pode pedir UAC) ✅
 
 > Teste também **antes do consentimento** (token ainda PENDENTE): deve recusar com
 > **"Autorize o acesso antes de baixar a ferramenta"** ✅
 >
-> Segurança (endurecido em 2026-10-20): o **link de acesso remoto tem 24 chars** (antes 8) e o
-> endpoint `GET /acessos/ferramenta/{fToken}/senha` é de **uso único** — a 2ª chamada devolve
-> **410 "Esta ferramenta já foi usada"** ✅
+> Segurança (endurecido em 2026-10-20): o **link de acesso remoto tem 24 chars** (antes 8). O
+> endpoint `GET /acessos/ferramenta/{fToken}/senha` **não é mais usado pelo `.bat`** (a senha volta
+> embutida, formato comprovado em Windows real) — ficou como legado.
 
 ### 4.7 Encerre o acesso remoto depois (opcional, `.bat` de encerramento)
 
-Se o cliente escolheu **2** (ou fechou o script) e mais tarde quiser remover o acesso, na mesma
+Se o cliente fechou o script e mais tarde quiser remover o acesso, na mesma
 página o botão **"Encerrar atendimento (remover acesso remoto)"** (ou
-`http://localhost:8081/acessos/<TOKEN>/encerrar.bat`) faz o mesmo do `1`: limpa a senha, para o
+`http://localhost:8081/acessos/<TOKEN>/encerrar.bat`) limpa a senha, para o
 serviço e mata o RustDesk ✅
 
 > Teste também em token PENDENTE (não consentido): deve recusar com

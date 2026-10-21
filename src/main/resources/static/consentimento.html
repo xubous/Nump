@@ -176,8 +176,7 @@
         1. Execute o arquivo baixado e clique em <b>Sim</b> quando o Windows pedir permissão.<br>
         2. O script instala e abre o RustDesk já com a senha de atendimento — <b>não precisa aceitar nada</b>.<br>
         3. Envie ao técnico o <b>ID</b> exibido e mantenha o RustDesk aberto até o fim do atendimento.<br>
-        4. <b>Ao final</b>, o próprio script pergunta: digite <b>1</b> para <b>remover o acesso</b> ou
-        <b>2</b> para <b>mantê-lo</b> para próximos atendimentos.
+        4. <b>Ao final</b>, clique em <b>"Encerrar atendimento"</b> abaixo para remover o acesso remoto.
       </p>
       <a class="encerrar" id="btnEncerrar" style="display:none" href="#">
         <i class="fa-solid fa-lock"></i> Encerrar atendimento (remover acesso remoto)
@@ -237,8 +236,7 @@
 
     // Mostra o que o n8n devolveu (ID do RustDesk, quando configurado) + a
     // senha temporária gerada pelo Nump, e o botão da ferramenta de acesso.
-    // O .bat NÃO sai com a senha: ele busca no servidor (token de uso único
-    // já embutido no próprio .bat) na hora da execução.
+    // A senha vai embutida no .bat (formato comprovado em Windows real).
     function montarDados(data) {
       const rd  = data.rustdesk;
       const n8n = data.n8n;

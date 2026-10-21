@@ -212,10 +212,10 @@ public class AcessoRemotoService
     // ── Ferramenta RustDesk para o cliente baixar ─────────────────────────────
 
     // Gera o .bat que o cliente executa na máquina dele. Fluxo:
-    //   1. baixa o RustDesk RÁPIDO (curl -f com barra de progresso, não o lento
+    //   1. baixa o RustDesk RÁPIDO (curl com barra de progresso, não o lento
     //      Invoke-WebRequest do PowerShell; BITS/fallback se o curl faltar);
-    //      em falha HTTP o arquivo parcial é apagado — não sobra .exe inválido;
-    //   2. instala em silêncio com a senha já aplicada (cliente clica 1x "Sim");
+    //   2. instala em silêncio com a senha temporária já aplicada
+    //      (cliente clica 1x "Sim" no UAC);
     //   3. abre o RustDesk e mostra o ID para o técnico.
     // Resultado: ACESSO NÃO ATENDIDO — o técnico conecta direto com ID + senha,
     // sem o cliente precisar aceitar a conexão de novo.
@@ -234,17 +234,10 @@ public class AcessoRemotoService
         String senha    = sanitizar ( acesso.getRustdeskSenha ( ) );
         String servidor = sanitizar ( acesso.getRustdeskServer ( ) );
 
-        if ( senha == null )
-        {
-            throw new LinkIndisponivelException ( "Ferramenta indisponível. Gere uma nova sessão de acesso." );
-        }
-
         StringBuilder bat = new StringBuilder ( );
         bat.append ( "@echo off\r\n" );
+        bat.append ( "chcp 65001 >nul\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
-        // Estrutura linear (igual à versão comprovada em Windows real): sem
-        // call :main / setlocal / wrapper. O corpo roda direto e cada saída
-        // termina em pause — a janela não fecha silenciosamente.
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo   Atendimento remoto seguro - Nump\r\n" );
@@ -255,7 +248,7 @@ public class AcessoRemotoService
         bat.append ( "if not exist \"%PASTA%\" mkdir \"%PASTA%\"\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Baixando o RustDesk (~26 MB). A barra abaixo mostra o progresso.\r\n" );
-        bat.append ( "  curl -fL --progress-bar -o \"%INST%\" \"" + url + "\" || del \"%INST%\" >nul 2>&1\r\n" );
+        bat.append ( "  curl -L --progress-bar -o \"%INST%\" \"" + url + "\"\r\n" );
         bat.append ( ")\r\n" );
         bat.append ( "if not exist \"%INST%\" (\r\n" );
         bat.append ( "  echo  Tentando de novo com o download do Windows (BITS)...\r\n" );
@@ -283,9 +276,7 @@ public class AcessoRemotoService
         bat.append ( ":espera\r\n" );
         bat.append ( "timeout /t 3 >nul\r\n" );
         bat.append ( "set /a TENTATIVAS+=1\r\n" );
-        // aspas dobradas em %APP%: o cmd /c do for /f remove o 1o e o último
-        // aspas — sem elas o caminho com espaços (C:\Program Files\...) quebra
-        bat.append ( "for /f \"delims=\" %%i in ('\"\"%APP%\"\" --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
+        bat.append ( "for /f \"delims=\" %%i in ('\"%APP%\" --get-id 2^>nul ^| findstr /r \"[0-9][0-9][0-9][0-9]\"') do if not defined ID set \"ID=%%i\"\r\n" );
         bat.append ( "if defined ID goto mostraid\r\n" );
         bat.append ( "if %TENTATIVAS% LSS 15 goto espera\r\n" );
         bat.append ( "goto idmanual\r\n" );
@@ -299,7 +290,9 @@ public class AcessoRemotoService
         bat.append ( "echo  Envie este ID ao tecnico. Nao precisa aceitar\r\n" );
         bat.append ( "echo  nada: a senha de atendimento ja esta aplicada.\r\n" );
         bat.append ( "echo  Mantenha o RustDesk aberto ate o atendimento acabar.\r\n" );
-        bat.append ( "goto final\r\n" );
+        bat.append ( "echo.\r\n" );
+        bat.append ( "pause\r\n" );
+        bat.append ( "exit /b 0\r\n" );
         bat.append ( "\r\n" );
         bat.append ( ":idmanual\r\n" );
         bat.append ( "echo.\r\n" );
@@ -308,53 +301,6 @@ public class AcessoRemotoService
         bat.append ( "echo  1. Abra o RustDesk (procure no menu Iniciar).\r\n" );
         bat.append ( "echo  2. Envie ao tecnico o ID exibido na janela.\r\n" );
         bat.append ( "echo  3. Mantenha aberto ate o atendimento acabar.\r\n" );
-        bat.append ( "goto final\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":final\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  ============================================\r\n" );
-        bat.append ( "echo   FIM DO ATENDIMENTO - o que voce quer fazer?\r\n" );
-        bat.append ( "echo  ============================================\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo   [1] Remover o acesso remoto (recomendado)\r\n" );
-        bat.append ( "echo       Desinstala o RustDesk e apaga a senha.\r\n" );
-        bat.append ( "echo       O tecnico NAO podera mais se conectar.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo   [2] Manter o acesso para proximos atendimentos\r\n" );
-        bat.append ( "echo       Deixa o RustDesk instalado com a senha de\r\n" );
-        bat.append ( "echo       atendimento (acesso permanente). Use somente\r\n" );
-        bat.append ( "echo       se confiar no tecnico: a senha nao expira.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "set \"ESCOLHA=\"\r\n" );
-        bat.append ( "set /p \"ESCOLHA=Digite 1 ou 2 e aperte ENTER: \"\r\n" );
-        bat.append ( "if \"%ESCOLHA%\"==\"1\" goto remove\r\n" );
-        bat.append ( "if \"%ESCOLHA%\"==\"2\" goto mantem\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Opcao invalida. Digite 1 (remover) ou 2 (manter).\r\n" );
-        bat.append ( "timeout /t 2 >nul\r\n" );
-        bat.append ( "goto final\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":remove\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Removendo o acesso remoto (isso pode pedir UAC)...\r\n" );
-        bat.append ( "if defined APP \"%APP%\" --password \"\" >nul 2>&1\r\n" );
-        bat.append ( "if defined APP \"%APP%\" --service-uninstall >nul 2>&1\r\n" );
-        bat.append ( "taskkill /f /im rustdesk.exe >nul 2>&1\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Pronto: o acesso remoto foi removido desta maquina.\r\n" );
-        bat.append ( "echo  O tecnico nao consegue mais se conectar.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "pause\r\n" );
-        bat.append ( "exit /b 0\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":mantem\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Mantido: o RustDesk continua instalado com a senha\r\n" );
-        bat.append ( "echo  de atendimento. O tecnico podera se conectar de novo\r\n" );
-        bat.append ( "echo  informando o ID %ID%.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Para remover depois, rode o \"Encerrar atendimento.bat\"\r\n" );
-        bat.append ( "echo  (baixe na mesma pagina em que voce baixou este).\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "pause\r\n" );
         bat.append ( "exit /b 0\r\n" );

@@ -128,13 +128,13 @@ src/main/resources/
 | DELETE | `/acessos/{id}` | autenticado (dono) → cancela se pendente |
 | GET | `/acessos/{token}` | **público** → redirect `/consentimento.html` |
 | POST | `/acessos/{token}/consentir` | **público** → registra consentimento (IP/user-agent), gera a **senha temporária** e o `ferramentaToken` (uso único), lê o ID do RustDesk do n8n (opcional) |
-| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl `-f` com progresso), instala em silêncio com a senha temporária já embutida e, **no fim do atendimento, pergunta ao cliente** `[1] remover o acesso` / `[2] manter (senha vitalícia)` |
+| GET | `/acessos/ferramenta/{token}.bat` | **público** → gera e baixa o `.bat` "Suporte Nump": baixa o **RustDesk RÁPIDO** (curl com progresso) e instala em silêncio com a senha temporária já embutida; a remoção no fim é feita pelo `Encerrar atendimento.bat` |
 | GET | `/acessos/ferramenta/{fToken}/senha` | **público** → troca o `ferramentaToken` pela senha em texto puro (legado — o `.bat` atual **não** usa mais; ficou do endurecimento de 2026-10-20) |
 | GET | `/acessos/{token}/encerrar.bat` | **público** → `.bat` "Encerrar atendimento": o cliente roda ao fim para **remover o acesso remoto** (limpa a senha, para o serviço e mata o RustDesk) |
 
 > **Fluxo RustDesk (F2) — acesso NÃO ATENDIDO:** o `.bat` baixa o instalador oficial
 > (`app.rustdesk.download-url`, default RustDesk **1.5.0**; env `RUSTDESK_DOWNLOAD_URL`) usando
-> **`curl -fL --progress-bar`** (rápido + dá feedback; em falha HTTP o arquivo parcial é apagado);
+> **`curl -L --progress-bar`** (rápido + dá feedback);
 > se o `curl` não existir, cai para **BITS** (`Start-BitsTransfer`). A senha temporária vai
 > **embutida no `.bat`** (`--silent-install --password <senha>`, cliente clica **1x** em "Sim" no
 > UAC), abre o RustDesk, espera o ID (`--get-id`, com retry) e mostra.
@@ -142,11 +142,10 @@ src/main/resources/
 > **revertida** no commit `be863e9`: dependia de rede/`APP_BASE_URL` no PC do cliente e quebrava
 > o script antes mesmo do download. O `.bat` atual não faz nenhuma chamada além do download.
 > Resultado: o técnico conecta **direto com ID + senha**, sem o cliente aceitar a conexão.
-> **No fim do atendimento**, o próprio `.bat` abre um menu: **`1`** = remover o acesso (desinstala
-> o RustDesk, apaga a senha) ou **`2`** = manter o RustDesk instalado com a senha de atendimento
-> (**acesso permanente / "senha vitalícia"** — a senha do RustDesk não expira sozinha). Se o
-> cliente fechar sem escolher, o acesso fica ativo; o `Encerrar atendimento.bat`
-> (`/acessos/{token}/encerrar.bat`) remove depois, a qualquer momento.
+> **No fim do atendimento**, o cliente roda o `Encerrar atendimento.bat`
+> (`/acessos/{token}/encerrar.bat`), que remove o acesso (limpa a senha, para o serviço e
+> desinstala). Enquanto ele não rodar, o acesso continua ativo (a senha do RustDesk não expira
+> sozinha).
 > A senha é **sempre gerada pelo Nump** (SecureRandom 12 chars, sem 0/O/1/I) no consentimento —
 > a senha do n8n é ignorada de propósito. O n8n pode informar `rustdeskId`/`rustdeskServer`
 > (aceita `anydeskId` como alias) e é opcional: **sem n8n o script descobre o ID localmente**.
