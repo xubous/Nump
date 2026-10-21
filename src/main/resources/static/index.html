@@ -237,6 +237,7 @@ main{max-width:1280px;margin:auto;padding:52px 28px 100px}
 .acesso-status{font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:.03em;text-transform:uppercase;flex-shrink:0}
 .acesso-status.pendente  {background:rgba(245,158,11,.12);color:var(--warning)}
 .acesso-status.consentido{background:rgba(34,197,94,.12);color:var(--success)}
+.acesso-status.encerrado{background:rgba(148,163,184,.14);color:var(--muted)}
 .acesso-status.cancelado {background:rgba(148,163,184,.12);color:var(--muted)}
 .acesso-status.expirado  {background:rgba(239,68,68,.12);color:var(--danger)}
 .acesso-bottom{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -806,7 +807,7 @@ btnAcesso.onclick = async () => {
 
 function buildAcessoCard(a) {
   const statusCls = (a.status || "PENDENTE").toLowerCase();
-  const statusLabel = { pendente:"Pendente", consentido:"Autorizado", cancelado:"Cancelado", expirado:"Expirado" }[statusCls] || a.status;
+  const statusLabel = { pendente:"Pendente", consentido:"Autorizado", cancelado:"Cancelado", expirado:"Expirado", encerrado:"Encerrado" }[statusCls] || a.status;
   const cliente = a.clienteEmail || "Cliente não identificado";
 
   const li = document.createElement("li");
@@ -830,7 +831,6 @@ function buildAcessoCard(a) {
     <div class="acesso-acoes">
       ${statusCls === "pendente" ? '<button type="button" class="btn-del">Cancelar</button>' : ""}
       ${statusCls !== "pendente" ? '<button type="button" class="btn-encerrar">Remover do histórico</button>' : ""}
-      ${statusCls === "consentido" ? '<button type="button" class="btn-desinstalar">Desinstalar RustDesk</button>' : ""}
     </div>
     ${statusCls === "consentido" && a.consentAt ? `
     <div class="acesso-audit">
