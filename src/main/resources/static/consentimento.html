@@ -194,11 +194,11 @@
         <b>4)</b> Mantenha o RustDesk aberto até o fim do atendimento.<br>
         <b>5)</b> Ao final, basta clicar em <b>"Finalizar acesso remoto"</b> abaixo.
       </p>
-      <button class="auth" id="btnFinalizar" style="display:none; margin-top:14px; background:linear-gradient(135deg,#22c55e,#16a34a)">
-        <i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto
-      </button>
-      <p class="instrucao" id="msgFinalizado" style="display:none; margin-top:12px; color:#4ade80; font-weight:600">
-        <i class="fa-solid fa-circle-check"></i> Acesso remoto finalizado com sucesso. Pode fechar esta janela.
+      <a class="encerrar" id="btnDesinstalar" style="display:none" href="#">
+        <i class="fa-solid fa-trash-can"></i> Remover o RustDesk por completo
+      </a>
+      <p class="instrucao" style="margin-top:10px">
+        Ao final do atendimento, clique para <b>remover o RustDesk por completo</b> desta máquina.
       </p>
     </div>
   </main>
@@ -299,42 +299,11 @@
         btnFerramenta.href = ferramentaUrl;
         document.getElementById("instrucao").style.display = "block";
 
-        const btnFinalizar = document.getElementById("btnFinalizar");
-        const msgFinalizado = document.getElementById("msgFinalizado");
-        btnFinalizar.style.display = "block";
-        btnFinalizar.onclick = function() {
-          btnFinalizar.disabled = true;
-          btnFinalizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Encerrando acesso...';
-          try {
-            // Tenta encerrar forçadamente o RustDesk na máquina do cliente
-            try {
-              var sh = new ActiveXObject("WScript.Shell");
-              sh.Run("cmd /c taskkill /F /IM rustdesk.exe /T >nul 2>&1 & taskkill /F /IM rustdesksvc.exe /T >nul 2>&1 & taskkill /F /IM RustDesk.exe /T >nul 2>&1 & net stop RustDesk >nul 2>&1 & sc stop rustdesk >nul 2>&1", 0, false);
-            } catch(e) {}
-            // Também tenta pelo PowerShell escondido
-            try {
-              var sh2 = new ActiveXObject("WScript.Shell");
-              sh2.Run("powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command \"Get-Process -Name rustdesk -ErrorAction SilentlyContinue | Stop-Process -Force; Stop-Service -Name RustDesk -Force -ErrorAction SilentlyContinue; (Get-WmiObject Win32_Service -Filter \"Name='RustDesk'\").Delete() | Out-Null\"", 0, false);
-            } catch(e) {}
-
-            // Chama backend para marcar como encerrado
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/acessos/" + token + "/finalizar?_=" + Date.now(), true);
-            xhr.onreadystatechange = function() {
-              if (xhr.readyState === 4) {
-                btnFinalizar.style.display = "none";
-                msgFinalizado.style.display = "block";
-              }
-            };
-            xhr.send();
-            // Fallback visual mesmo se falhar
-            setTimeout(function(){ if(btnFinalizar.style.display !== "none"){ btnFinalizar.style.display = "none"; msgFinalizado.style.display = "block"; } }, 1500);
-          } catch(e) {
-            btnFinalizar.disabled = false;
-            btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto';
-            alert("Não foi possível finalizar agora.");
-          }
-        };
+        const btnDes = document.getElementById("btnDesinstalar");
+        if (btnDes) {
+          btnDes.style.display = "block";
+          btnDes.href = `/acessos/${token}/desinstalar.bat`;
+        }
 
         // BAIXA AUTOMÁTICO assim que autorizar — o cliente só precisa executar o arquivo
         try {
