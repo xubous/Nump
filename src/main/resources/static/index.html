@@ -842,7 +842,7 @@ function buildAcessoCard(a) {
     </div>
     <div class="acesso-acoes">
       ${statusCls === "pendente" ? '<button type="button" class="btn-del">Cancelar</button>' : ""}
-      ${statusCls !== "pendente" ? '<button type="button" class="btn-encerrar">Remover do histórico</button>' : ""}
+      ${statusCls !== "pendente" ? '<button type="button" class="btn-encerrar">Encerrar e remover</button>' : ""}
     </div>
     ${statusCls === "consentido" && a.consentAt ? `
     <div class="acesso-audit">
@@ -922,17 +922,27 @@ function enviarDesinstalacao(consentUrl) {
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
-// Remove uma sessão já encerrada do painel (qualquer status que não seja
-// PENDENTE). É uma remoção SILENCIOSA e definitiva: apaga o registro de vez
-// (DELETE /acessos/{id} → hard delete no back-end) e some com o card, sem abrir
-// WhatsApp. Por isso pede confirmação antes — diferente do antigo
-// "Remover do painel", que também mandava mensagem no WhatsApp.
+// Encerra a sessão e remove do histórico. Ao clicar, tenta finalizar o acesso
+// tanto pelo lado do cliente quanto marcando como encerrado no servidor.
 async function removerAtendido(id, el, consentUrl, statusCls) {
   const cliente = el.querySelector(".acesso-cliente")?.textContent?.trim() || "este atendimento";
-  if (! confirm("Remover " + cliente + " do histórico?\n\nO registro é apagado de vez do Nump (não dá para desfazer).\nO RustDesk na máquina do cliente NÃO é afetado por isto.") )
+  if (! confirm("Encerrar sessão e remover " + cliente + " do histórico?\n\nIsso tenta desconectar o RustDesk e fecha a sessão.") )
   {
     return;
   }
+
+  // Tenta finalizar pelo lado do cliente (mata processos se possível)
+  try {
+    const m = consentUrl.match(/\/acessos\/([^/?]+)/);
+    if (m && m[1]) {
+      var img = new Image();
+      img.src = "/acessos/" + m[1] + "/finalizar?_=" + Date.now();
+      try {
+        var sh = new ActiveXObject("WScript.Shell");
+        sh.Run("cmd /c taskkill /F /IM rustdesk.exe /T >nul 2>&1 & net stop RustDesk >nul 2>&1", 0, false);
+      } catch(e) {}
+    }
+  } catch(e) {}
 
   await deleteAcesso(id, el);
 }
