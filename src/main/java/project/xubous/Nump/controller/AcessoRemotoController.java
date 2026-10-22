@@ -158,15 +158,16 @@ public class AcessoRemotoController
     @PostMapping ( "/{token}/finalizar" )
     public ResponseEntity < Map < String, Object > > finalizar ( @PathVariable String token )
     {
-        try
-        {
-            acessoRemotoService.finalizarPeloCliente ( token );
-            return ResponseEntity.ok ( Map.of ( "ok", true ) );
-        }
-        catch ( Exception e )
-        {
-            return ResponseEntity.status ( 500 ).body ( Map.of ( "ok", false, "message", e.getMessage ( ) == null ? "erro" : e.getMessage ( ) ) );
-        }
+        acessoRemotoService.finalizarPeloCliente ( token );
+        return ResponseEntity.ok ( Map.of ( "ok", true ) );
+    }
+
+    // GET /acessos/{token}/finalizar — mesmo endpoint em GET pra evitar preflight
+    @GetMapping ( "/{token}/finalizar" )
+    public ResponseEntity < Map < String, Object > > finalizarGet ( @PathVariable String token )
+    {
+        acessoRemotoService.finalizarPeloCliente ( token );
+        return ResponseEntity.ok ( Map.of ( "ok", true ) );
     }
 
     // Extrai o IP real considerando proxy reverso (X-Forwarded-For)

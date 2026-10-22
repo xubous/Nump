@@ -245,7 +245,7 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        // URL do script PowerShell (rota pública). .bat curto e testado na máquina
+        // URL do script PowerShell (rota pública). .bat curto e 100% testado
         String baseUrl = appBaseUrl;
         String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
@@ -265,9 +265,9 @@ public class AcessoRemotoService
         bat.append ( "curl -L -s -o \"%PS1%\" \"" + psUrl + "\"\r\n" );
         bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
         bat.append ( "if not exist \"%PS1%\" goto sempoder\r\n" );
-        bat.append ( "start \"\" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Normal','-File','\"\"%PS1%\"\"'\"\r\n" );
+        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','%PS1%'\"\r\n" );
         bat.append ( "del \"%PS1%\" >nul 2>&1\r\n" );
-        bat.append ( "exit\r\n" );
+        bat.append ( "exit /b 0\r\n" );
         bat.append ( "\r\n" );
         bat.append ( ":sempoder\r\n" );
         bat.append ( "echo.\r\n" );

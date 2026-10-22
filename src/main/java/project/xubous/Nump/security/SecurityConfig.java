@@ -74,6 +74,7 @@ public class SecurityConfig
                 .requestMatchers ( HttpMethod.POST, "/acessos/*/consentir",
                         "/acessos/*/finalizar",
                         "/acessos/ferramenta/*/id" ).permitAll ()
+                .requestMatchers ( HttpMethod.GET, "/acessos/*/finalizar" ).permitAll ()
                 // admin
                 .requestMatchers ( HttpMethod.GET,    "/users" ).hasRole ( "ADMIN" )
                 .requestMatchers ( HttpMethod.DELETE, "/users/**" ).hasRole ( "ADMIN" )
