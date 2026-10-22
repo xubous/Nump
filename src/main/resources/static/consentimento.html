@@ -316,15 +316,21 @@
               }
             } catch(e) {}
 
-            const res = await fetch(`/acessos/${token}/finalizar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-            if (res.ok) {
-              btnFinalizar.style.display = "none";
-              msgFinalizado.style.display = "block";
-            } else {
+            try {
+              const res = await fetch(`/acessos/${token}/finalizar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", credentials: "same-origin" });
+              if (res.ok) {
+                btnFinalizar.style.display = "none";
+                msgFinalizado.style.display = "block";
+                return;
+              }
               const txt = await res.text().catch(()=>"");
               btnFinalizar.disabled = false;
               btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto';
-              alert("Não foi possível finalizar agora. (" + res.status + ") " + txt);
+              alert("Não foi possível finalizar agora. (" + res.status + ")\n" + txt);
+            } catch (err) {
+              btnFinalizar.disabled = false;
+              btnFinalizar.innerHTML = '<i class="fa-solid fa-circle-check"></i> Finalizar acesso remoto';
+              alert("Erro de conexão ao finalizar: " + err.message);
             }
           } catch (e) {
             btnFinalizar.disabled = false;
