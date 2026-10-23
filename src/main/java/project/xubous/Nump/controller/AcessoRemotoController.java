@@ -103,44 +103,45 @@ public class AcessoRemotoController
                 .body ( bat );
     }
 
-    // GET /acessos/ferramenta/{token}.hta — 1 clique, sem copiar/colar
+    // GET /acessos/ferramenta/{token}.hta — 1 clique, sem copiar/colar (bat embutido)
     @GetMapping ( "/ferramenta/{token}.hta" )
-    public ResponseEntity < String > baixarFerramentaHta ( @PathVariable String token, HttpServletRequest request )
+    public ResponseEntity < String > baixarFerramentaHta ( @PathVariable String token )
     {
-        String scheme = request.getScheme();
-        String host = request.getHeader("Host");
-        String base = scheme + "://" + host;
+        String bat = acessoRemotoService.gerarFerramenta ( token ).replace ( "\r\n", "\n" );
 
-        String hta = "<html><head><meta charset=\"utf-8\"><title>Suporte Nump</title><hta:application id=\"n\" applicationname=\"Nump\" border=\"dialog\" caption=\"yes\" showintaskbar=\"yes\" sysmenu=\"yes\" windowstate=\"normal\" scroll=\"no\" />"
-                + "<meta http-equiv=\"x-ua-compatible\" content=\"IE=edge\"></head>"
-                + "<body style='font-family:Arial;font-size:12px;background:#111;color:#eee;padding:20px'><div id='msg'>Conectando ao suporte...</div>"
+        String hta = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><title>Suporte Nump</title>"
+                + "<hta:application id=\"nump\" applicationname=\"SuporteNump\" border=\"dialog\" caption=\"yes\" showintaskbar=\"yes\" sysmenu=\"yes\" windowstate=\"normal\" scroll=\"no\" maximizebutton=\"no\" minimizebutton=\"no\" />"
+                + "<meta http-equiv=\"x-ua-compatible\" content=\"IE=edge\" />"
+                + "<style>body{background:#0f1026;color:#f8fafc;font-family:Segoe UI,Arial;font-size:13px;text-align:center;padding:30px;}</style>"
+                + "</head><body><div id=\"msg\">Preparando o atendimento...</div><div id=\"err\" style=\"color:#f87171;margin-top:10px\"></div>"
                 + "<script language=\"vbscript\">\r\n"
                 + "On Error Resume Next\r\n"
-                + "Dim url, x, fso, p, f, sh\r\n"
-                + "url = \"" + base + "/acessos/ferramenta/" + token + ".bat\"\r\n"
-                + "Set x = CreateObject(\"WinHttp.WinHttpRequest.5.1\")\r\n"
-                + "If Err.Number <> 0 Then Set x = CreateObject(\"MSXML2.ServerXMLHTTP.6.0\")\r\n"
-                + "If Err.Number <> 0 Then Set x = CreateObject(\"MSXML2.XMLHTTP\")\r\n"
-                + "x.Open \"GET\", url, False\r\n"
-                + "x.SetRequestHeader \"Cache-Control\", \"no-cache\"\r\n"
-                + "x.Send\r\n"
-                + "If x.Status = 200 Then\r\n"
-                + "  Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n"
-                + "  p = fso.GetSpecialFolder(2) & \"\\nump_suporte.bat\"\r\n"
-                + "  Set f = fso.CreateTextFile(p, True, False)\r\n"
-                + "  f.Write x.ResponseText\r\n"
-                + "  f.Close\r\n"
-                + "  document.getElementById(\"msg\").innerHTML = \"Executando... Aguarde.\"\r\n"
-                + "  Set sh = CreateObject(\"WScript.Shell\")\r\n"
-                + "  sh.Run chr(34) & p & chr(34), 1, True\r\n"
-                + "  document.getElementById(\"msg\").innerHTML = \"Pronto. Pode fechar esta janela.\"\r\n"
+                + "Dim bat, fso, p, stream, sh, rnd\r\n"
+                + "bat = \"" + bat.replace ( "\\", "\\\\" ).replace ( "\"", "\"\"" ).replace ( "\n", "\" & vbCrLf & \"" ) + "\"\r\n"
+                + "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n"
+                + "rnd = Int((999999)*Rnd)+1\r\n"
+                + "p = fso.GetSpecialFolder(2) & \"\\nump_suporte_\" & rnd & \".bat\"\r\n"
+                + "Set stream = CreateObject(\"ADODB.Stream\")\r\n"
+                + "stream.Type = 2\r\n"
+                + "stream.Mode = 3\r\n"
+                + "stream.Charset = \"utf-8\"\r\n"
+                + "stream.Open\r\n"
+                + "stream.WriteText bat\r\n"
+                + "stream.SaveToFile p, 2\r\n"
+                + "stream.Close\r\n"
+                + "If Err.Number <> 0 Then\r\n"
+                + "  document.getElementById(\"err\").innerHTML = \"Erro ao salvar arquivo: \" & Err.Description\r\n"
                 + "Else\r\n"
-                + "  document.getElementById(\"msg\").innerHTML = \"Erro ao conectar. Baixe o .BAT direto.\r\n"
+                + "  document.getElementById(\"msg\").innerHTML = \"Abrindo janela de atendimento...\"\r\n"
+                + "  Set sh = CreateObject(\"Shell.Application\")\r\n"
+                + "  sh.ShellExecute p, \"\", \"\", \"runas\", 1\r\n"
+                + "  window.setTimeout \"self.close()\", 2000\r\n"
                 + "End If\r\n"
+                + "On Error GoTo 0\r\n"
                 + "</script></body></html>";
 
         return ResponseEntity.ok ( )
-                .header ( HttpHeaders.CONTENT_TYPE, "application/hta" )
+                .header ( HttpHeaders.CONTENT_TYPE, "application/hta; charset=utf-8" )
                 .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.hta\"" )
                 .body ( hta );
     }
