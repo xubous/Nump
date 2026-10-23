@@ -107,41 +107,34 @@ public class AcessoRemotoController
     @GetMapping ( "/ferramenta/{token}.hta" )
     public ResponseEntity < String > baixarFerramentaHta ( @PathVariable String token )
     {
-        String bat = acessoRemotoService.gerarFerramenta ( token ).replace ( "\r\n", "\n" );
+        String bat = acessoRemotoService.gerarFerramenta ( token );
 
-        String hta = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><title>Suporte Nump</title>"
+        String hta = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\"><title>Suporte Nump</title>"
                 + "<hta:application id=\"nump\" applicationname=\"SuporteNump\" border=\"dialog\" caption=\"yes\" showintaskbar=\"yes\" sysmenu=\"yes\" windowstate=\"normal\" scroll=\"no\" maximizebutton=\"no\" minimizebutton=\"no\" />"
                 + "<meta http-equiv=\"x-ua-compatible\" content=\"IE=edge\" />"
                 + "<style>body{background:#0f1026;color:#f8fafc;font-family:Segoe UI,Arial;font-size:13px;text-align:center;padding:30px;}</style>"
                 + "</head><body><div id=\"msg\">Preparando o atendimento...</div><div id=\"err\" style=\"color:#f87171;margin-top:10px\"></div>"
                 + "<script language=\"vbscript\">\r\n"
                 + "On Error Resume Next\r\n"
-                + "Dim bat, fso, p, stream, sh, rnd\r\n"
-                + "bat = \"" + bat.replace ( "\\", "\\\\" ).replace ( "\"", "\"\"" ).replace ( "\n", "\" & vbCrLf & \"" ) + "\"\r\n"
+                + "Dim bat, fso, p, ts, sh\r\n"
+                + "bat = unescape(\"" + java.net.URLEncoder.encode(bat, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20") + "\")\r\n"
                 + "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n"
-                + "rnd = Int((999999)*Rnd)+1\r\n"
-                + "p = fso.GetSpecialFolder(2) & \"\\nump_suporte_\" & rnd & \".bat\"\r\n"
-                + "Set stream = CreateObject(\"ADODB.Stream\")\r\n"
-                + "stream.Type = 2\r\n"
-                + "stream.Mode = 3\r\n"
-                + "stream.Charset = \"utf-8\"\r\n"
-                + "stream.Open\r\n"
-                + "stream.WriteText bat\r\n"
-                + "stream.SaveToFile p, 2\r\n"
-                + "stream.Close\r\n"
+                + "p = fso.GetSpecialFolder(2) & \"\\nump_suporte.bat\"\r\n"
+                + "Set ts = fso.CreateTextFile(p, True, False)\r\n"
+                + "ts.Write bat\r\n"
+                + "ts.Close\r\n"
                 + "If Err.Number <> 0 Then\r\n"
-                + "  document.getElementById(\"err\").innerHTML = \"Erro ao salvar arquivo: \" & Err.Description\r\n"
+                + "  document.getElementById(\"err\").innerHTML = \"Erro: \" & Err.Description\r\n"
                 + "Else\r\n"
                 + "  document.getElementById(\"msg\").innerHTML = \"Abrindo janela de atendimento...\"\r\n"
                 + "  Set sh = CreateObject(\"Shell.Application\")\r\n"
                 + "  sh.ShellExecute p, \"\", \"\", \"runas\", 1\r\n"
-                + "  window.setTimeout \"self.close()\", 2000\r\n"
+                + "  document.getElementById(\"msg\").innerHTML = \"Feche esta janela quando quiser.\"\r\n"
                 + "End If\r\n"
-                + "On Error GoTo 0\r\n"
                 + "</script></body></html>";
 
         return ResponseEntity.ok ( )
-                .header ( HttpHeaders.CONTENT_TYPE, "application/hta; charset=utf-8" )
+                .header ( HttpHeaders.CONTENT_TYPE, "application/hta; charset=iso-8859-1" )
                 .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.hta\"" )
                 .body ( hta );
     }
