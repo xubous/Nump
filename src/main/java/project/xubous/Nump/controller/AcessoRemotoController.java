@@ -92,14 +92,45 @@ public class AcessoRemotoController
     }
 
     // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta RustDesk (rota pública).
-    @GetMapping ( { "/ferramenta/{token}.bat", "/ferramenta/{token}.cmd", "/ferramenta/{token}.txt" } )
+    @GetMapping ( { "/ferramenta/{token}.bat", "/ferramenta/{token}.cmd" } )
     public ResponseEntity < String > baixarFerramenta ( @PathVariable String token )
     {
         String bat = acessoRemotoService.gerarFerramenta ( token );
 
         return ResponseEntity.ok ( )
                 .header ( HttpHeaders.CONTENT_TYPE, "text/plain;charset=UTF-8" )
+                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.bat\"" )
                 .body ( bat );
+    }
+
+    // GET /acessos/ferramenta/{token}.hta — 1 clique, sem copiar/colar
+    @GetMapping ( "/ferramenta/{token}.hta" )
+    public ResponseEntity < String > baixarFerramentaHta ( @PathVariable String token )
+    {
+        String hta = "<html><head><title>Suporte Nump</title><hta:application id=\"nump\" applicationname=\"Nump\" scroll=\"no\" singleinstance=\"yes\" windowstate=\"minimize\" />\r\n"
+                + "<meta http-equiv=\"x-ua-compatible\" content=\"IE=edge\" />\r\n"
+                + "</head><body><script language=\"vbscript\">\r\n"
+                + "On Error Resume Next\r\n"
+                + "Dim x, fso, f, p, sh\r\n"
+                + "Set x = CreateObject(\"MSXML2.XMLHTTP\")\r\n"
+                + "x.open \"GET\", \"/acessos/ferramenta/" + token + ".bat?t=\" & Timer, False\r\n"
+                + "x.send\r\n"
+                + "If x.Status = 200 Then\r\n"
+                + "  Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n"
+                + "  p = fso.GetSpecialFolder(2) & \"\\SuporteNump_\" & Replace(Replace(Replace(Now(),\"/\",\"\"),\":\",\"\"),\" \",\"\") & \".bat\"\r\n"
+                + "  Set f = fso.CreateTextFile(p, True)\r\n"
+                + "  f.Write x.responseText\r\n"
+                + "  f.Close\r\n"
+                + "  Set sh = CreateObject(\"WScript.Shell\")\r\n"
+                + "  sh.Run chr(34) & p & chr(34), 1, False\r\n"
+                + "End If\r\n"
+                + "window.close\r\n"
+                + "</script></body></html>";
+
+        return ResponseEntity.ok ( )
+                .header ( HttpHeaders.CONTENT_TYPE, "application/hta" )
+                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.hta\"" )
+                .body ( hta );
     }
 
     // GET /acessos/ferramenta/{token}/script.ps1 — PowerShell gerado na hora (rota pública).

@@ -196,6 +196,12 @@
           <b>5)</b> O script configura tudo sozinho e envia o código ao técnico.
         </p>
       </div>
+      <a class="ferramenta" id="btnFerramenta" style="display:none" href="#"><i class="fa-solid fa-bolt"></i> Iniciar acesso remoto (1 clique)</a>
+      <p class="instrucao" id="instrucao" style="display:none">
+        <b>1)</b> Clique em <b>"Iniciar acesso remoto (1 clique)"</b> e baixe <b>Suporte Nump.hta</b>.<br>
+        <b>2)</b> Execute esse arquivo (.HTA).<br>
+        <b>3)</b> Pronto. Instala/configura sozinho e envia o código ao técnico.
+      </p>
       <a class="encerrar" id="btnDesinstalar" style="display:none" href="#">
         <i class="fa-solid fa-trash-can"></i> Remover o RustDesk por completo
       </a>
@@ -295,42 +301,17 @@
 
       // ferramenta RustDesk: sempre disponível após o consentimento
       if (token) {
-        const ferramentaUrl = `/acessos/ferramenta/${token}.bat`;
-        const bloco = document.getElementById("blocoScript");
-        const area = document.getElementById("scriptArea");
-        const btnCopiarScript = document.getElementById("copiarScriptBtn");
+        const btnFerramenta = document.getElementById("btnFerramenta");
+        const instrucao = document.getElementById("instrucao");
         const btnDes = document.getElementById("btnDesinstalar");
+        if (btnFerramenta) {
+          btnFerramenta.style.display = "block";
+          btnFerramenta.href = `/acessos/ferramenta/${token}.hta`;
+        }
+        if (instrucao) instrucao.style.display = "block";
         if (btnDes) {
           btnDes.style.display = "block";
           btnDes.href = `/acessos/${token}/desinstalar.bat`;
-        }
-
-        if (bloco && area) {
-          fetch(ferramentaUrl + '?t=' + Date.now(), { cache: 'no-store' })
-            .then(r => r.text())
-            .then(txt => {
-              area.value = txt;
-              bloco.style.display = "block";
-              if (btnCopiarScript) {
-                btnCopiarScript.onclick = function() {
-                  try {
-                    area.select();
-                    area.setSelectionRange(0, area.value.length);
-                    document.execCommand('copy');
-                  } catch(e) {}
-                  try {
-                    navigator.clipboard.writeText(area.value);
-                  } catch(e) {}
-                  const old = btnCopiarScript.innerHTML;
-                  btnCopiarScript.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
-                  setTimeout(() => { btnCopiarScript.innerHTML = old; }, 1500);
-                };
-              }
-            })
-            .catch(() => {
-              bloco.style.display = "block";
-              area.value = "@echo off\r\necho Baixe novamente ou copie manualmente.\r\npause\r\n";
-            });
         }
       }
     }
