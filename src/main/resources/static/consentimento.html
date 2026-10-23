@@ -184,16 +184,18 @@
       <div class="linha muted">Autorização registrada. Abaixo o que o técnico já recebeu — você não precisa copiar nada.</div>
       <div id="dados-sessao"></div>
       <button class="copiar" id="copiarBtn" style="display:none">Copiar dados</button>
-      <a class="ferramenta" id="btnFerramenta" style="display:none" href="#">
-        <i class="fa-solid fa-download"></i> Baixar novamente se não iniciou
-      </a>
-      <p class="instrucao" id="instrucao" style="display:none">
-        <b>1) Execute o arquivo baixado</b> (<b>CLIQUE_AQUI_PARA_CONECTAR.bat</b>) na pasta Downloads.<br>
-        <b>2) Clique em <b>Sim</b></b> quando o Windows pedir permissão de administrador.<br>
-        <b>3) Pronto!</b> O script já instala/configura tudo, aplica a senha e <b>envia o código de acesso ao técnico automaticamente</b>.<br>
-        <b>4)</b> Mantenha o RustDesk aberto até o fim do atendimento.<br>
-        <b>5)</b> Ao final, basta clicar em <b>"Finalizar acesso remoto"</b> abaixo.
-      </p>
+      <div id="blocoScript" style="display:none; margin-top:16px">
+        <p style="font-weight:600; margin-bottom:8px"><i class="fa-solid fa-file-code"></i> Copiar e salvar localmente (funciona mesmo com bloqueio)</p>
+        <textarea id="scriptArea" readonly style="width:100%; min-height:200px; background:rgba(255,255,255,0.05); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:12px; font-family:Consolas, monospace; font-size:12px; resize:vertical"></textarea>
+        <button class="copiar" id="copiarScriptBtn" type="button" style="display:inline-block; margin-top:10px"><i class="fa-regular fa-copy"></i> Copiar todo o script</button>
+        <p class="instrucao" style="display:block; margin-top:10px">
+          <b>1)</b> Clique em <b>"Copiar todo o script"</b>.<br>
+          <b>2)</b> Abra o <b>Bloco de Notas</b> (notepad.exe).<br>
+          <b>3)</b> Cole (Ctrl+V), salve como <b>Suporte Nump.bat</b> com tipo <b>Todos os arquivos (*.*)</b>.<br>
+          <b>4)</b> Execute esse arquivo <b>salvo no seu PC</b> e clique em <b>Sim</b> no UAC.<br>
+          <b>5)</b> O script configura tudo sozinho e envia o código ao técnico.
+        </p>
+      </div>
       <a class="encerrar" id="btnDesinstalar" style="display:none" href="#">
         <i class="fa-solid fa-trash-can"></i> Remover o RustDesk por completo
       </a>
@@ -294,51 +296,41 @@
       // ferramenta RustDesk: sempre disponível após o consentimento
       if (token) {
         const ferramentaUrl = `/acessos/ferramenta/${token}.bat`;
-        const btnFerramenta = document.getElementById("btnFerramenta");
-        btnFerramenta.style.display = "block";
-        btnFerramenta.href = ferramentaUrl;
-        document.getElementById("instrucao").style.display = "block";
-
+        const bloco = document.getElementById("blocoScript");
+        const area = document.getElementById("scriptArea");
+        const btnCopiarScript = document.getElementById("copiarScriptBtn");
         const btnDes = document.getElementById("btnDesinstalar");
         if (btnDes) {
           btnDes.style.display = "block";
           btnDes.href = `/acessos/${token}/desinstalar.bat`;
         }
 
-        // BAIXA AUTOMÁTICO assim que autorizar — .CMD via Blob
-        try {
-          fetch(ferramentaUrl.replace('.bat', '.cmd'), { cache: 'no-store' })
-            .then(r => r.ok ? r.text() : fetch(ferramentaUrl, { cache: 'no-store' }).then(r2 => r2.text()))
+        if (bloco && area) {
+          fetch(ferramentaUrl + '?t=' + Date.now(), { cache: 'no-store' })
+            .then(r => r.text())
             .then(txt => {
-              try {
-                const blob = new Blob([txt], { type: 'application/octet-stream' });
-                const urlBlob = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = urlBlob;
-                a.download = 'CLIQUE_AQUI_PARA_CONECTAR.cmd';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => window.URL.revokeObjectURL(urlBlob), 1000);
-              } catch(e2) {
-                const a = document.createElement('a');
-                a.href = ferramentaUrl.replace('.bat', '.cmd');
-                a.download = 'CLIQUE_AQUI_PARA_CONECTAR.cmd';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+              area.value = txt;
+              bloco.style.display = "block";
+              if (btnCopiarScript) {
+                btnCopiarScript.onclick = function() {
+                  try {
+                    area.select();
+                    area.setSelectionRange(0, area.value.length);
+                    document.execCommand('copy');
+                  } catch(e) {}
+                  try {
+                    navigator.clipboard.writeText(area.value);
+                  } catch(e) {}
+                  const old = btnCopiarScript.innerHTML;
+                  btnCopiarScript.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+                  setTimeout(() => { btnCopiarScript.innerHTML = old; }, 1500);
+                };
               }
             })
             .catch(() => {
-              const a = document.createElement('a');
-              a.href = ferramentaUrl.replace('.bat', '.cmd');
-              a.download = 'CLIQUE_AQUI_PARA_CONECTAR.cmd';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+              bloco.style.display = "block";
+              area.value = "@echo off\r\necho Baixe novamente ou copie manualmente.\r\npause\r\n";
             });
-        } catch (e) {
-          // se o navegador bloquear o auto-download, o botão continua visível
         }
       }
     }

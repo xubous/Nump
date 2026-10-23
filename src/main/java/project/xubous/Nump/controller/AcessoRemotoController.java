@@ -92,16 +92,14 @@ public class AcessoRemotoController
     }
 
     // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta RustDesk (rota pública).
-    @GetMapping ( { "/ferramenta/{token}.bat", "/ferramenta/{token}.cmd" } )
-    public ResponseEntity < byte [ ] > baixarFerramenta ( @PathVariable String token )
+    @GetMapping ( { "/ferramenta/{token}.bat", "/ferramenta/{token}.cmd", "/ferramenta/{token}.txt" } )
+    public ResponseEntity < String > baixarFerramenta ( @PathVariable String token )
     {
         String bat = acessoRemotoService.gerarFerramenta ( token );
 
         return ResponseEntity.ok ( )
-                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.cmd\"" )
-                .contentType ( org.springframework.http.MediaType.parseMediaType ( "application/octet-stream" ) )
-                .header ( "X-Content-Type-Options", "nosniff" )
-                .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
+                .header ( HttpHeaders.CONTENT_TYPE, "text/plain;charset=UTF-8" )
+                .body ( bat );
     }
 
     // GET /acessos/ferramenta/{token}/script.ps1 — PowerShell gerado na hora (rota pública).
