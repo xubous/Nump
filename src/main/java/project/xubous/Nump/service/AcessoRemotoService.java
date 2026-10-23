@@ -245,7 +245,8 @@ public class AcessoRemotoService
             throw new LinkIndisponivelException ( "Autorize o acesso antes de baixar a ferramenta" );
         }
 
-        // URL do script PowerShell (rota pública). .bat curto e 100% testado
+        // URL do script PowerShell (rota pública). Roda direto na memória (irm | iex)
+        // pra evitar bloqueio por execution policy e arquivo .ps1 no disco
         String baseUrl = appBaseUrl;
         String psUrl   = baseUrl + "/acessos/ferramenta/" + token + "/script.ps1";
         StringBuilder bat = new StringBuilder ( );
@@ -258,25 +259,10 @@ public class AcessoRemotoService
         bat.append ( "echo  ============================================\r\n" );
         bat.append ( "echo.\r\n" );
         bat.append ( "echo  O Windows vai pedir permissao de administrador.\r\n" );
-        bat.append ( "echo  Clique em SIM e aguarde a configuracao terminar.\r\n" );
+        bat.append ( "echo  Clique em SIM e aguarde...\r\n" );
         bat.append ( "echo.\r\n" );
-        bat.append ( "set \"PS1=%TEMP%\\nump_atendimento.ps1\"\r\n" );
-        bat.append ( "echo  Baixando o script de atendimento...\r\n" );
-        bat.append ( "curl -L -s -o \"%PS1%\" \"" + psUrl + "\"\r\n" );
-        bat.append ( "if not exist \"%PS1%\" powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '" + psUrl + "' -OutFile '%PS1%' -UseBasicParsing\"\r\n" );
-        bat.append ( "if not exist \"%PS1%\" goto sempoder\r\n" );
-        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','%PS1%'\"\r\n" );
-        bat.append ( "del \"%PS1%\" >nul 2>&1\r\n" );
-        bat.append ( "exit /b 0\r\n" );
-        bat.append ( "\r\n" );
-        bat.append ( ":sempoder\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "echo  Nao foi possivel baixar o script de atendimento.\r\n" );
-        bat.append ( "echo  Baixe o RustDesk em https://rustdesk.com, instale,\r\n" );
-        bat.append ( "echo  abra e informe o codigo de acesso ao tecnico.\r\n" );
-        bat.append ( "echo.\r\n" );
-        bat.append ( "pause\r\n" );
-        bat.append ( "exit /b 1\r\n" );
+        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Start-Process powershell -Verb RunAs -WindowStyle Normal -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-Command','[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $ProgressPreference=\\\"SilentlyContinue\\\"; irm \\\"" + psUrl + "\\\" | iex'\"\r\n" );
+        bat.append ( "exit\r\n" );
 
         return bat.toString ( );
     }
