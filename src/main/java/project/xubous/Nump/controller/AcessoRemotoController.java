@@ -1,15 +1,10 @@
 package project.xubous.Nump.controller;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -97,25 +92,14 @@ public class AcessoRemotoController
     }
 
     // GET /acessos/ferramenta/{token}.bat — baixa a ferramenta RustDesk (rota pública).
-    // Agora entrega em .ZIP para remover o Mark of the Web (bloqueio do Windows)
     @GetMapping ( "/ferramenta/{token}.bat" )
-    public ResponseEntity < byte [ ] > baixarFerramenta ( @PathVariable String token ) throws IOException
+    public ResponseEntity < byte [ ] > baixarFerramenta ( @PathVariable String token )
     {
         String bat = acessoRemotoService.gerarFerramenta ( token );
-        byte[] batBytes = bat.getBytes ( StandardCharsets.UTF_8 );
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream ( );
-        ZipOutputStream zos = new ZipOutputStream ( baos );
-        ZipEntry entry = new ZipEntry ( "Suporte Nump.bat" );
-        zos.putNextEntry ( entry );
-        zos.write ( batBytes );
-        zos.closeEntry ( );
-        zos.close ( );
 
         return ResponseEntity.ok ( )
-                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.zip\"" )
-                .contentType ( MediaType.parseMediaType ( "application/zip" ) )
-                .body ( baos.toByteArray ( ) );
+                .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.bat\"" )
+                .body ( bat.getBytes ( StandardCharsets.UTF_8 ) );
     }
 
     // GET /acessos/ferramenta/{token}/script.ps1 — PowerShell gerado na hora (rota pública).

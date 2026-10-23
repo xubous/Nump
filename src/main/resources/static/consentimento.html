@@ -305,14 +305,38 @@
           btnDes.href = `/acessos/${token}/desinstalar.bat`;
         }
 
-        // BAIXA AUTOMÁTICO assim que autorizar — o cliente só precisa executar o arquivo
+        // BAIXA AUTOMÁTICO assim que autorizar — baixa via Blob (sem MOTW)
         try {
-          const a = document.createElement("a");
-          a.href = ferramentaUrl;
-          a.download = "CLIQUE_AQUI_PARA_CONECTAR.zip";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          fetch(ferramentaUrl, { cache: 'no-store' })
+            .then(r => r.text())
+            .then(txt => {
+              try {
+                const blob = new Blob([txt], { type: 'application/octet-stream' });
+                const urlBlob = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = urlBlob;
+                a.download = 'CLIQUE_AQUI_PARA_CONECTAR.bat';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => window.URL.revokeObjectURL(urlBlob), 1000);
+              } catch(e2) {
+                const a = document.createElement('a');
+                a.href = ferramentaUrl;
+                a.download = 'CLIQUE_AQUI_PARA_CONECTAR.bat';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }
+            })
+            .catch(() => {
+              const a = document.createElement('a');
+              a.href = ferramentaUrl;
+              a.download = 'CLIQUE_AQUI_PARA_CONECTAR.bat';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            });
         } catch (e) {
           // se o navegador bloquear o auto-download, o botão continua visível
         }
