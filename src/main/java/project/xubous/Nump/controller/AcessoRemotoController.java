@@ -103,38 +103,36 @@ public class AcessoRemotoController
                 .body ( bat );
     }
 
-    // GET /acessos/ferramenta/{token}.hta — 1 clique, sem copiar/colar (bat embutido)
+    // GET /acessos/ferramenta/{token}.hta — 1 clique
     @GetMapping ( "/ferramenta/{token}.hta" )
     public ResponseEntity < String > baixarFerramentaHta ( @PathVariable String token )
     {
-        String bat = acessoRemotoService.gerarFerramenta ( token );
-
-        String hta = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\"><title>Suporte Nump</title>"
-                + "<hta:application id=\"nump\" applicationname=\"SuporteNump\" border=\"dialog\" caption=\"yes\" showintaskbar=\"yes\" sysmenu=\"yes\" windowstate=\"normal\" scroll=\"no\" maximizebutton=\"no\" minimizebutton=\"no\" />"
-                + "<meta http-equiv=\"x-ua-compatible\" content=\"IE=edge\" />"
-                + "<style>body{background:#0f1026;color:#f8fafc;font-family:Segoe UI,Arial;font-size:13px;text-align:center;padding:30px;}</style>"
-                + "</head><body><div id=\"msg\">Preparando o atendimento...</div><div id=\"err\" style=\"color:#f87171;margin-top:10px\"></div>"
+        String hta = "<html><head><meta charset=\"utf-8\"><title>Suporte Nump</title><hta:application id=\"n\" applicationname=\"Nump\" border=\"dialog\" caption=\"yes\" showintaskbar=\"yes\" sysmenu=\"yes\" scroll=\"no\" windowstate=\"normal\" />"
+                + "<style>body{background:#111;color:#fff;font-family:Arial;text-align:center;padding:25px}</style></head>"
+                + "<body><div id=\"m\">Conectando...</div>"
                 + "<script language=\"vbscript\">\r\n"
                 + "On Error Resume Next\r\n"
-                + "Dim bat, fso, p, ts, sh\r\n"
-                + "bat = unescape(\"" + java.net.URLEncoder.encode(bat, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20") + "\")\r\n"
-                + "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n"
-                + "p = fso.GetSpecialFolder(2) & \"\\nump_suporte.bat\"\r\n"
-                + "Set ts = fso.CreateTextFile(p, True, False)\r\n"
-                + "ts.Write bat\r\n"
-                + "ts.Close\r\n"
-                + "If Err.Number <> 0 Then\r\n"
-                + "  document.getElementById(\"err\").innerHTML = \"Erro: \" & Err.Description\r\n"
-                + "Else\r\n"
-                + "  document.getElementById(\"msg\").innerHTML = \"Abrindo janela de atendimento...\"\r\n"
+                + "Dim xhr, fso, p, f, sh\r\n"
+                + "Set xhr = CreateObject(\"MSXML2.XMLHTTP\")\r\n"
+                + "xhr.open \"GET\", \"ferramenta/" + token + ".bat?x=\" & Now(), False\r\n"
+                + "xhr.send\r\n"
+                + "If xhr.status = 200 Then\r\n"
+                + "  Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n"
+                + "  p = fso.GetSpecialFolder(2) & \"\\SuporteNump.bat\"\r\n"
+                + "  Set f = fso.CreateTextFile(p, True)\r\n"
+                + "  f.Write xhr.responseText\r\n"
+                + "  f.Close\r\n"
+                + "  document.all.m.innerHTML = \"Executando...\"\r\n"
                 + "  Set sh = CreateObject(\"Shell.Application\")\r\n"
                 + "  sh.ShellExecute p, \"\", \"\", \"runas\", 1\r\n"
-                + "  document.getElementById(\"msg\").innerHTML = \"Feche esta janela quando quiser.\"\r\n"
+                + "  window.close\r\n"
+                + "Else\r\n"
+                + "  document.all.m.innerHTML = \"Tente baixar o .BAT direto\"\r\n"
                 + "End If\r\n"
                 + "</script></body></html>";
 
         return ResponseEntity.ok ( )
-                .header ( HttpHeaders.CONTENT_TYPE, "application/hta; charset=iso-8859-1" )
+                .header ( HttpHeaders.CONTENT_TYPE, "application/hta" )
                 .header ( HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Suporte Nump.hta\"" )
                 .body ( hta );
     }
