@@ -247,6 +247,8 @@ public class AcessoRemotoService
         bat.append ( "setlocal enabledelayedexpansion\r\n" );
         bat.append ( "title Atendimento remoto - Nump\r\n" );
         bat.append ( "chcp 65001 >nul\r\n" );
+        // Tenta remover Mark of the Web se existir
+        bat.append ( "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"try{ Unblock-File -Path '%~f0' -ErrorAction SilentlyContinue }catch{}; try{ Remove-Item -Path '%~f0:Zone.Identifier' -Force -ErrorAction SilentlyContinue }catch{}\" >nul 2>&1\r\n" );
         bat.append ( "\r\n" );
         // Elevação: se não for admin, pede UAC via VBS/Start-Process equivalente em cmd
         bat.append ( "net session >nul 2>&1\r\n" );
